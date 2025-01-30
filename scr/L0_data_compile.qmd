@@ -9,24 +9,71 @@ editor_options:
 
 This code pulls together data from the raw csv files downloaded from the Kestrel Drop2 dataloggers used in the DEAD 1.0 project.
 
+To run this code, all raw Kestrel files should be placed within the "L0" folder for this project on Dropbox. This code pulls data from the Dropbox folder (currently mapped to HT's local drive as API token for Dropbox folder pull not working).
+
 ## Libraries and File Input
 
 ```{r}
 #| label: load needed packages
+library(here) # v. 0.1
+library(stringr) # v. 1.2.0
+library(purrr) # v. 0.2.3
 library(tidyverse)
-library(here)
+library(scales)
+library(lubridate)
 ```
 
+Display information about package versions in use when this code was run.
+
 ```{r}
+#| label: session-info
+sessionInfo()
+```
+
+## L0: Read, Clean, Combine
+
+### List Kestrel Files
+
+Note that the "more columns than column names" error is likely to happen. Find the offending file (use the last line of code in this chunk to do so) and delete extra columns to the right of the data.\
+\
+Much of this code is based on the commentary from: <https://aosmith.rbind.io/2017/12/31/many-datasets/>
+
+```{r}
+# list all files to read in
+### Note that this reference from the DERT Dropbox
+allfiles <- list.files(
+  path = file.path("/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/DEAD project/logger data/L0 raw data/DBG time 2"),  
+  pattern = "\\.csv$",  # Ensure proper regex for .csv files  
+  full.names = TRUE  
+)
+
+# reading and extract loggerID
+read_fun = function(path) {
+  test = read.csv(path, 
+                  skip = 5,
+                  header = FALSE,
+                  col.names = c("datetime", "temperature", "RH", "heatindex", "dewpoint", "datatype") )
+  allnames = str_split( path, pattern = "/", simplify = TRUE)
+ test$loggerID = str_extract(allnames[, ncol(allnames)], pattern = "2[0-9][0-9][0-9][0-9][0-9][0-9]") #extract the loggerID from the file name and add as a column
+  test$RH <- as.numeric(as.character(test$RH))
+  test$heatindex <- as.numeric(as.character(test$heatindex))
+  test$dewpoint <- as.numeric(as.character(test$dewpoint))
+  test$temperature <- as.numeric(as.character(test$temperature))
+  test$loggerID <- as.numeric(as.character(test$loggerID))
+  test
+}
+
+# Line below is useful for testing if logger name is being assigned
+# change the number in brackets to check show the top section of each file
+read_fun(allfiles[6]) # use to test the function on an individual file
 ```
 
 ```{r}
 #| label: read in data files
 
 read_and_combine_files <- function(folder_path) {
-  all_files <- list.files(path = here("L0 raw data", folder_path), 
+  all_files <- list.files(path = here("L0 raw data", folder_path),
                           full.names = TRUE)
-
   read_fun <- function(path) {
     # Read only the necessary columns
     first_row <- readLines(path, n = 1)  # Read the first row
