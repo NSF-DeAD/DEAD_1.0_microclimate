@@ -9,10 +9,10 @@ editor_options:
 
 ## Overview
 
-This is a synthesis of Kestrel logger data for the DEAD project. Loggers were deployed in March 2021 and collected in end of October or early November 2022. Prior R script in this project combines and synthesizes data starting with the first logger downloads. Here I plot the output by individual loggers and sites.
+This is a synthesis of Kestrel logger data for the DEAD project. Loggers were deployed in March 2021 and collected in end of October or early November 2022. Prior R script in this project combines and synthesizes data starting with the first logger downloads. Here output by individual loggers and sites are plotted.
 
 Written July 24, 2023\
-updated July 25, 2023
+updated 2023-07-25, 2025-01-30
 
 ```{r}
 #|label: Load-packages
@@ -21,6 +21,7 @@ library(scales)
 library(tidyverse)
 library(lubridate)
 library(reshape2)
+library(hms)
 
 sessionInfo()
 ```
@@ -29,22 +30,31 @@ sessionInfo()
 
 ## List Kestrel Files for Reading In
 
-*Note that the csv file may need to be updated w the latest file name.*
+*Note that this pulls the L2 csv file from Dropbox. Check that the most recent file is called.*
 
 ```{r}
 #|label: Read-in-L2-data
 
-### using the csv file is changing the date-time formatting - use the existing file (need to run "L1 compile and clean" first)
 # combined L2 dataset (all sites, all times, all microsites)
-#KestrelL2df = read.csv(here("L2 data","L2_DEAD_combined_data_2024-02-13_HT.csv")) # **will need to be updated with latest file version**
+### **will need to be updated with latest file version**
+### current file is "L2_DEAD_combined_data_2024-02-13_HT.csv"
+KestrelL2df = read.csv("https://www.dropbox.com/scl/fi/58ox4qkylabvfgap5m59c/L2_DEAD_combined_data_2024-02-13_HT.csv?rlkey=0nhpajnrw8jsseeqixl182hlx&dl=1") 
 
-KestrelL2df <- L1_compiled_cleaned
-KestrelL2df$loggerID <- as.factor(KestrelL2df$loggerID) # make LoggerID treated as categorical (factor) rather than continuous variable
-KestrelL2df$date <- as.Date(KestrelL2df$time) # extract the date out of the datetime stamp
- 
-KestrelL2df$time <- as.POSIXct(KestrelL2df$time)
-### CURRENTLY NOT WORKING
-KestrelL2df$HMS <- as.POSIXct(KestrelL2df$time, format = "%H:%M:%S") # extract HMS out of the date-time column
+# Data clean-up
+# remove the extra columns that gets added in (columns "X" and "...1")
+KestrelL2df <- KestrelL2df[, -c(1,2)]
+# make LoggerID treated as categorical (factor) rather than continuous variable
+KestrelL2df$loggerID <- as.factor(KestrelL2df$loggerID) 
+# change column name from time to datetime
+KestrelL2df <- KestrelL2df |> 
+  dplyr::rename(datetime = time)
+# convert datetime to POSIXct format
+KestrelL2df$datetime <- as.POSIXct(KestrelL2df$datetime, format = "%Y-%m-%d %H:%M:%S")
+# extract the date out of the datetime stamp
+KestrelL2df$date <- as.Date(KestrelL2df$datetime) 
+# extract HMS out of the datetime stamp
+KestrelL2df$HMS <- format(KestrelL2df$datetime, format = "%H:%M:%S")
+
 ```
 
 # Individual Logger Plots
