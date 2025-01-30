@@ -12,7 +12,7 @@ editor_options:
 This file converts Kestrel data for the DEAD projects from L1 to L2. This is an update from the original .R script that I wrote in fall 2021.\
 Written July 24, 2023\
 Updated\
-July 25, 2023
+2023-07-25, 2025-01-30
 
 ```{r}
 #|label: Package-install-and-info
@@ -22,7 +22,9 @@ library(here)
 sessionInfo() 
 ```
 
-Compiling all L1 files ... this takes a few minutes!
+## L1 Data Read and Compile
+
+Note that this takes a few minutes to run!
 
 ```{r}
 #|label: Read-in-and-clean-L1 
