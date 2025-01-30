@@ -1,0 +1,67 @@
+---
+title: "L1 data compile and clean"
+author: "Heather Throop"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Overview
+
+This file converts Kestrel data for the DEAD projects from L1 to L2. This is an update from the original .R script that I wrote in fall 2021.\
+Written July 24, 2023\
+Updated\
+July 25, 2023
+
+```{r}
+#|label: Package-install-and-info
+library(tidyverse)
+library(here) 
+
+sessionInfo() 
+```
+
+Compiling all L1 files ... this takes a few minutes!
+
+```{r}
+#|label: Read-in-and-clean-L1 
+L1_paths = list.files(path = here("L1 data","combined by site not cleaned"), # get a list of all files in the L1 not cleaned folder
+              pattern = ".csv", # only files that end in AM.csv or PM.csv
+              full.names = TRUE)  # return the complete file path (and not just the file name)
+L1_paths
+
+L1_compiled_cleaned <- L1_paths |> 
+  map(read_csv) |> 
+  list_rbind() |> # bind all L1 files together
+  mutate(X = NULL) |> # get rid of extra first colun
+  mutate(datetime = NULL) |> # get rid of datetime column
+  mutate(time = as.POSIXct(time)) |> 
+  mutate(microsite = as.factor(microsite)) |>
+  mutate(cluster = as.factor(cluster)) |>
+  mutate(site = as.factor(site)) |>
+  distinct() |> # remove any duplicate lines (since logger files overlap)
+  na.omit() # remove any rows with NAs
+
+# get rid of extraneous logs before the deployment date
+L1_compiled_cleaned <- L1_compiled_cleaned |>
+  subset(time >= "2021-03-05", ) |>
+  distinct()  # remove any duplicate lines (since logger files overlap)
+
+```
+
+Remove any logs that weren't on the hour (some loggers were set to log more frequently than every hour or took extra points when downloading).
+
+```{r}
+#|label: Remove-mid-hour-logs
+
+L1_compiled_cleaned$minutes <- lubridate::minute(L1_compiled_cleaned$time) # extract the date out of the datetime stamp
+L1_compiled_cleaned <- L1_compiled_cleaned |>
+  filter(minutes == "0")
+```
+
+```{r}
+##### UPDATE THE FILE NAME WITH TODAY'S DATE AND YOUR INITIALS
+write.csv(L1_compiled_cleaned, here("L2 data","L2_DEAD_combined_data_2024-02-13_HT.csv")) # save a csv to the appropriate folder
+
+```

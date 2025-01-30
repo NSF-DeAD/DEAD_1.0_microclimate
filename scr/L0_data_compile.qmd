@@ -1,0 +1,187 @@
+---
+title: "Kestrel file combine and clean"
+author: "Heather Throop"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Quarto
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+You can add options to executable code like this
+
+```{r}
+
+
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+
+```{r}
+```
+
+```{r}
+library(tidyverse)
+
+read_and_combine_files <- function(folder_path) {
+  all_files <- list.files(path = here("L0 raw data", folder_path), 
+                          full.names = TRUE)
+
+  read_fun <- function(path) {
+    # Read only the necessary columns
+    first_row <- readLines(path, n = 1)  # Read the first row
+    num_cols <- length(strsplit(first_row, ",")[[1]])
+
+    col_names <- c("datetime", "temperature", "RH", "heatindex", "dewpoint", "datatype")
+    if (num_cols > length(col_names)) {
+      col_names <- c(col_names, paste0("V", (length(col_names) + 1):(num_cols - length(col_names))))
+    }
+
+    test <- read.csv(path, 
+                     skip = 5,
+                     header = FALSE,
+                     col.names = col_names)
+
+    allnames <- str_split(path, pattern = "/", simplify = TRUE)
+    test$loggerID <- str_extract(allnames[, ncol(allnames)], pattern = "2[0-9][0-9][0-9][0-9][0-9][0-9]")
+    
+    # Convert to numeric
+    test$RH <- as.numeric(as.character(test$RH))
+    test$heatindex <- as.numeric(as.character(test$heatindex))
+    test$dewpoint <- as.numeric(as.character(test$dewpoint))
+    test$temperature <- as.numeric(as.character(test$temperature))
+    test$loggerID <- as.numeric(as.character(test$loggerID))
+
+    # Define multiple datetime formats
+    datetime_formats <- c("%m/%d/%y %H:%M", "%m/%d/%y %H:%M, tz = MST", 
+    "%m/%d/%y %H:%M:%S")
+
+    # Try each format until one succeeds
+    for (format in datetime_formats) {
+      tryCatch({
+        test$datetime <- as.POSIXlt(test$datetime, format = format)
+        break  # Exit the loop if successful
+      }, error = function(e) {
+        cat("Error:", conditionMessage(e), "\n")
+      })
+    }
+
+    test
+  }
+
+  # Combine all files using bind_rows
+  combined_data <- bind_rows(map(all_files, read_fun))
+
+  # Add logger type column
+  combined_data$loggertype <- "Kestrel"
+
+  # Check the number of loggers in the file
+  combined_data %>%
+    group_by(loggerID) %>%
+    summarize(n = n())
+
+  # Add microsite and block information
+  df_loggers <- read.csv("KestrelIDs.csv", header = TRUE)
+  df_loggers$loggerID <- as.numeric(df_loggers$loggerID)
+
+  combined_data <- left_join(combined_data, df_loggers, by = "loggerID")
+  
+  combined_data
+}
+
+```
+
+```{r}
+# Example usage
+combined_DBG_time2_notcleaned <- read_and_combine_files("DBG time 2")
+combined_DBG_time3_notcleaned <- read_and_combine_files("DBG time 3")
+combined_DBG_time4_notcleaned <- read_and_combine_files("DBG time 4")
+```
+
+convert to POSIXct before
+
+```{r}
+library(tidyverse)
+
+read_and_combine_files <- function(folder_path) {
+  all_files <- list.files(path = here("L0 raw data", folder_path), 
+                          full.names = TRUE)
+
+  read_fun <- function(path) {
+    # Read only the necessary columns
+    first_row <- readLines(path, n = 1)  # Read the first row
+    num_cols <- length(strsplit(first_row, ",")[[1]])
+
+    col_names <- c("datetime", "temperature", "RH", "heatindex", "dewpoint", "datatype")
+    if (num_cols > length(col_names)) {
+      col_names <- c(col_names, paste0("V", (length(col_names) + 1):(num_cols - length(col_names))))
+    }
+
+    test <- read.csv(path, 
+                     skip = 5,
+                     header = FALSE,
+                     col.names = col_names)
+
+    allnames <- str_split(path, pattern = "/", simplify = TRUE)
+    test$loggerID <- str_extract(allnames[, ncol(allnames)], pattern = "2[0-9][0-9][0-9][0-9][0-9][0-9]")
+    
+    # Convert to numeric
+    test$RH <- as.numeric(as.character(test$RH))
+    test$heatindex <- as.numeric(as.character(test$heatindex))
+    test$dewpoint <- as.numeric(as.character(test$dewpoint))
+    test$temperature <- as.numeric(as.character(test$temperature))
+    test$loggerID <- as.numeric(as.character(test$loggerID))
+
+    test
+  }
+
+  # Read all files and convert datetime column to POSIXlt before combining
+  all_data <- map(all_files, ~{
+    data <- read_fun(.x)
+    # Define multiple datetime formats
+    datetime_formats <- c("%m/%d/%y %H:%M", "%Y-%m-%d %H:%M:%S",
+                          "%m/%d/%y %H:%M")
+    
+    # Try each format until one succeeds
+    for (format in datetime_formats) {
+      tryCatch({
+        data$datetime <- as.POSIXlt(data$datetime, format = format, tz = "MST")
+        break  # Exit the loop if successful
+      }, error = function(e) {
+        cat("Error:", conditionMessage(e), "\n")
+      })
+    }
+    
+    data
+  })
+
+  # Combine all files using bind_rows
+  combined_data <- bind_rows(all_data)
+
+  # Add logger type column
+  combined_data$loggertype <- "Kestrel"
+
+  # Check the number of loggers in the file
+  combined_data %>%
+    group_by(loggerID) %>%
+    summarize(n = n())
+
+  # Add microsite and block information
+  df_loggers <- read.csv("KestrelIDs.csv", header = TRUE)
+  df_loggers$loggerID <- as.numeric(df_loggers$loggerID)
+
+  combined_data <- left_join(combined_data, df_loggers, by = "loggerID")
+
+  combined_data
+}
+
+# Example usage
+combined_DBG_time4_notcleaned <- read_and_combine_files("DBG time 4")
+
+```

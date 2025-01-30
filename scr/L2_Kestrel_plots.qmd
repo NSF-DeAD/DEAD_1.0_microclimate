@@ -1,0 +1,444 @@
+---
+title: "L2_Kestrel_data_plots"
+author: "Heather Throop"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Overview
+
+This is a synthesis of Kestrel logger data for the DEAD project. Loggers were deployed in March 2021 and collected in end of October or early November 2022. Prior R script in this project combines and synthesizes data starting with the first logger downloads. Here I plot the output by individual loggers and sites.
+
+Written July 24, 2023\
+updated July 25, 2023
+
+```{r}
+#|label: Load-packages
+library(here)
+library(scales)
+library(tidyverse)
+library(lubridate)
+library(reshape2)
+
+sessionInfo()
+```
+
+# Data Read
+
+## List Kestrel Files for Reading In
+
+*Note that the csv file may need to be updated w the latest file name.*
+
+```{r}
+#|label: Read-in-L2-data
+
+### using the csv file is changing the date-time formatting - use the existing file (need to run "L1 compile and clean" first)
+# combined L2 dataset (all sites, all times, all microsites)
+#KestrelL2df = read.csv(here("L2 data","L2_DEAD_combined_data_2024-02-13_HT.csv")) # **will need to be updated with latest file version**
+
+KestrelL2df <- L1_compiled_cleaned
+KestrelL2df$loggerID <- as.factor(KestrelL2df$loggerID) # make LoggerID treated as categorical (factor) rather than continuous variable
+KestrelL2df$date <- as.Date(KestrelL2df$time) # extract the date out of the datetime stamp
+ 
+KestrelL2df$time <- as.POSIXct(KestrelL2df$time)
+### CURRENTLY NOT WORKING
+KestrelL2df$HMS <- as.POSIXct(KestrelL2df$time, format = "%H:%M:%S") # extract HMS out of the date-time column
+```
+
+# Individual Logger Plots
+
+Below are separate plots for each logger (grouped by site). These are intended to check the data (e.g., gaps in logs for different loggers and correct number of loggers per site).
+
+## RH
+
+```{r}
+#| label: RH-plots
+
+# DBG
+KestrelL2df |>
+  subset(site=="DBG") |>
+  ggplot(aes(x=time, y=RH, color = microsite, group = 1)) + 
+    labs(title = "DBG") +
+    geom_line() +
+    xlab("Date") +
+    ylab("RH (%)") +
+    scale_x_datetime(date_breaks = "1 month", labels = date_format("%b %d")) +
+    facet_grid(loggerID ~ .) 
+
+# JER
+KestrelL2df |>
+  subset(site=="JER") |>
+  ggplot(aes(x=time, y=RH, color = microsite, group = 1)) + 
+    labs(title = "JER") +
+    geom_line() +
+    xlab("Date") +
+    ylab("RH (%)") +
+    scale_x_datetime(date_breaks = "1 month", labels = date_format("%b %d")) +
+    facet_grid(loggerID ~ .) 
+
+# Moab
+KestrelL2df |>
+  subset(site=="Moab") |>
+  ggplot(aes(x=time, y=RH, color = microsite, group = 1)) + 
+    labs(title = "Moab") +
+    geom_line() +
+    xlab("Date") +
+    ylab("RH (%)") +
+    scale_x_datetime(date_breaks = "1 month", labels = date_format("%b %d")) +
+    facet_grid(loggerID ~ .) 
+
+# MOJ
+KestrelL2df |>
+  subset(site=="MOJ") |>
+  ggplot(aes(x=time, y=RH, color = microsite, group = 1)) + 
+    labs(title = "MOJ") +
+    geom_line() +
+    xlab("Date") +
+    ylab("RH (%)") +
+    scale_x_datetime(date_breaks = "1 month", labels = date_format("%b %d")) +
+    facet_grid(loggerID ~ .) 
+
+# RCEW
+KestrelL2df |>
+  subset(site=="RCEW") |>
+  ggplot(aes(x=time, y=RH, color = microsite, group = 1)) + 
+    labs(title = "RCEW") +
+    geom_line() +
+    xlab("Date") +
+    ylab("RH (%)") +
+    scale_x_datetime(date_breaks = "1 month", labels = date_format("%b %d")) +
+    facet_grid(loggerID ~ .) 
+```
+
+## Temperature
+
+```{r}
+
+# DBG
+KestrelL2df |>
+  subset(site=="DBG") |>
+  ggplot(aes(x=time, y=temperature, color = microsite, group = 1)) + 
+    labs(title = "DBG") +
+    geom_line() +
+    xlab("Date") +
+    ylab("Temperature (C)") +
+    scale_x_datetime(date_breaks = "1 month", labels = date_format("%b %d")) +
+    facet_grid(loggerID ~ .) 
+
+# JER
+KestrelL2df |>
+  subset(site=="JER") |>
+  ggplot(aes(x=time, y=temperature, color = microsite, group = 1)) + 
+    labs(title = "JER") +
+    geom_line() +
+    xlab("Date") +
+    ylab("Temperature (C)") +
+    scale_x_datetime(date_breaks = "1 month", labels = date_format("%b %d")) +
+    facet_grid(loggerID ~ .) 
+
+KestrelL2df |>
+  subset(site=="Moab") |>
+  ggplot(aes(x=time, y=temperature, color = microsite, group = 1)) + 
+    labs(title = "Moab") +
+    geom_line() +
+    xlab("Date") +
+    ylab("Temperature (C)") +
+    scale_x_datetime(date_breaks = "1 month", labels = date_format("%b %d")) +
+    facet_grid(loggerID ~ .) 
+
+KestrelL2df |>
+  subset(site=="MOJ") |>
+  ggplot(aes(x=time, y=temperature, color = microsite, group = 1)) + 
+    labs(title = "MOJ") +
+    geom_line() +
+    xlab("Date") +
+    ylab("Temperature (C)") +
+    scale_x_datetime(date_breaks = "1 month", labels = date_format("%b %d")) +
+    facet_grid(loggerID ~ .) 
+
+KestrelL2df |>
+  subset(site=="RCEW") |>
+  ggplot(aes(x=time, y=temperature, color = microsite, group = 1)) + 
+    labs(title = "RCEW") +
+    geom_line() +
+    xlab("Date") +
+    ylab("Temperature (C)") +
+    scale_x_datetime(date_breaks = "1 month", labels = date_format("%b %d")) +
+    facet_grid(loggerID ~ .) 
+```
+
+# Site x Microsite Means
+
+## 
+
+```{r}
+#| label: hourly site-x-microsite-means
+# create df that condenses the multiple loggers per site x microsite condition down to one mean value per hour
+
+KestrelL2_hourlymeans_df <- KestrelL2df |>
+  group_by(site, microsite, time) |>
+  summarize(
+               N    = sum(!is.na(RH)),
+               mean_T = mean(temperature, na.rm=TRUE),
+               sd_T   = sd(temperature, na.rm=TRUE),
+               se_T   = sd_T / sqrt(N),
+               mean_RH = mean(RH, na.rm=TRUE),
+               sd_RH   = sd(RH, na.rm=TRUE),
+               se_RH   = sd_RH / sqrt(N)
+               ) |>
+  na.omit(KestrelL2_hourlymeans_df)
+
+
+```
+
+```{r}
+#| label: daily-site-microsite means
+# create df that condenses the multiple loggers per site x microsite condition down to one mean value day
+
+KestrelL2_hourlymeans_df$date <- as.Date(KestrelL2_hourlymeans_df$time) # extract the date out of the datetime stamp
+
+KestrelL2_dailymeans_df <- KestrelL2_hourlymeans_df |>
+  group_by(site, microsite, date) |>
+  summarize(
+              N    = sum(!is.na(mean_RH)),
+              dailyT = mean(mean_T, na.rm=TRUE),
+              sd_dailyT   = sd(mean_T, na.rm=TRUE),
+              se_dailyT   = sd_dailyT / sqrt(N),
+              dailyRH = mean(mean_RH, na.rm=TRUE),
+              sd_dailyRH   = sd(mean_RH, na.rm=TRUE),
+              se_dailyRH   = sd_dailyRH / sqrt(N),
+              dailyminRH = min(mean_RH, na.rm=TRUE),
+              dailymaxRH = max(mean_RH, na.rm=TRUE),
+              daily_max_T = max(mean_T, na.rm=TRUE),
+              daily_min_T = min(mean_T, na.rm=TRUE)
+              )
+
+# plots of daily means
+p2 <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=dailyRH, color = microsite, group = 1)) + 
+  geom_point() +
+  theme_bw() +
+  ylab("Daily Mean Relative Humidity (%)") +
+  xlab("") +
+  scale_x_date(limits = as.Date(c("2021-03-01", "2022-11-01")))
+p2 + facet_grid(site ~ .)
+
+p2max <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=dailymaxRH, color = microsite, group = 1)) + 
+  geom_point() +
+  theme_bw() +
+  ylab("Daily Maximum Relative Humidity (%)") +
+  xlab("") +
+  scale_x_date(limits = as.Date(c("2021-03-01", "2022-11-01")))
+p2max + facet_grid(site ~ .)
+
+p2min <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=dailyminRH, color = microsite, group = 1)) + 
+  geom_point() +
+  theme_bw() +
+  ylab("Daily Minimum Relative Humidity (%)") +
+  xlab("") +
+  scale_x_date(limits = as.Date(c("2021-03-01", "2022-11-01")))
+p2min + facet_grid(site ~ .)
+
+p3 <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=dailyT, color = microsite, group = 1)) + 
+  geom_point() +
+  theme_bw() +
+  ylab("Daily Mean Temperature (C)") +
+  xlab("") +
+  scale_x_date(limits = as.Date(c("2021-03-01", "2022-11-01")))
+p3 + facet_grid(site ~ .) 
+
+p3max <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=daily_max_T, color = microsite, group = 1)) + 
+  geom_point() +
+  theme_bw() +
+  ylab("Daily Max Temperature (C)") +
+  xlab("") +
+  scale_x_date(limits = as.Date(c("2021-03-01", "2022-11-01")))
+p3max + facet_grid(site ~ .) 
+
+p3min <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=daily_min_T, color = microsite, group = 1)) + 
+  geom_point() +
+  theme_bw() +
+  ylab("Daily Min Temperature (C)") +
+  xlab("") +
+  scale_x_date(limits = as.Date(c("2021-03-01", "2022-11-01")))
+p3min + facet_grid(site ~ .) 
+
+```
+
+```{r}
+#| label: time-period-subsets
+
+# Define start and end times for the subset as R objects that are the time class
+startDate <- as.Date("2021-07-15")
+endDate <- as.Date("2021-07-22")
+
+# create a start and end time R object
+start.end <- c(startDate,endDate)
+start.end
+
+# View data for the defined start and end times only 
+p4 <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=dailyT, line = microsite, color = microsite)) + 
+  geom_line() +
+  theme_bw() +
+  (scale_x_date(limits=start.end))
+p4 + facet_grid(. ~ site) 
+
+p5 <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=dailyRH, line = microsite, color = microsite)) + 
+  geom_line() +
+  theme_bw() +
+  (scale_x_date(limits=start.end))
+p5 + facet_grid(. ~ site) 
+
+
+# THIS ISSN"T WORKGIN TO INCLUDE TIME 
+# hourly means for the defined start and end times only 
+# taking a subset of the time period
+# Define start and end times for the subset as R objects that are the time class
+startTime <- as.POSIXct("2021-04-01 00:00:00", tz = "MST")
+endTime <- as.POSIXct("2021-04-07 00:00:00", tz = "MST")
+
+# create a start and end time R object
+start.end.Time <- c(startTime,endTime)
+start.end.Time
+p6 <- ggplot(KestrelL2_hourlymeans_df, aes(x=time, y=mean_T, color = microsite)) + 
+  geom_point() +
+  theme_bw() +
+  (scale_x_time(limits=start.end.Time))
+p6 + facet_grid(. ~ site) 
+
+
+### Trying here to do some individual plot analyses to look at patterns
+
+# separate out DBG so that we can focus on one site
+DBGhourly_df <- KestrelL2_hourlymeans_df[which(KestrelL2_hourlymeans_df$site=='DBG'),]
+DBG_T_hourly <- ggplot(DBGhourly_df, aes(x=time, y=mean_T, color = microsite)) + 
+  geom_point() 
+DBG_T_hourly
+
+# taking a subset of the time period
+# Define start and end times for the subset as R objects that are the time class
+startDate <- as.Date("2021-07-15")
+endDate <- as.Date("2021-07-22")
+
+# create a start and end time R object
+start.end <- c(startDate,endDate)
+start.end
+
+p4 <- ggplot(DBGhourly_df, aes(x=date, y=mean_T, line = microsite, color = microsite)) + 
+  geom_line() +
+  theme_bw() #+
+#  (scale_x_date(limits=start.end))
+p4 
+
+# looking at the difference in RH and T at the same time period between microsites for a particular site
+# clunky approach
+# make separate dfs for open and shrub microsites
+open_hourlymeans_df <- KestrelL2_hourlymeans_df[which(KestrelL2_hourlymeans_df$microsite == 'Open'),]
+shrub_hourlymeans_df <- KestrelL2_hourlymeans_df[which(KestrelL2_hourlymeans_df$microsite == 'Shrub'),]
+# rename RH and T variables, merge dfs together, calculate differences.
+library(reshape)
+open_hourlymeans_df <- rename(open_hourlymeans_df, c(mean_T="open_T"))
+open_hourlymeans_df <- rename(open_hourlymeans_df, c(mean_RH="open_RH"))
+shrub_hourlymeans_df <- rename(shrub_hourlymeans_df, c(mean_T="shrub_T"))
+shrub_hourlymeans_df <- rename(shrub_hourlymeans_df, c(mean_RH="shrub_RH"))
+# merge dfs together
+hourlymeans_micrositecompare_df <- merge(open_hourlymeans_df,shrub_hourlymeans_df,by=c("site","time")) 
+# calculate differences (open minus shrub hourly mean values)
+hourlymeans_micrositecompare_df$open.shrub_T <- hourlymeans_micrositecompare_df$open_T - hourlymeans_micrositecompare_df$shrub_T
+hourlymeans_micrositecompare_df$open.shrub_RH <- hourlymeans_micrositecompare_df$open_RH - hourlymeans_micrositecompare_df$shrub_RH
+
+# plots of hourly differences between open and shrub
+p5 <- ggplot(hourlymeans_micrositecompare_df, aes(x=time, y=open.shrub_T, color = site)) + 
+  geom_point()
+p5
+
+p6 <- ggplot(hourlymeans_micrositecompare_df, aes(x=time, y=open.shrub_RH, color = site)) + 
+  geom_point()
+p6
+
+# try to restrict the time sequence
+# coord_x_datetime
+startTime <- as.POSIXct("2021-04-01 00:00")
+endTime <- as.POSIXct("2021-04-07 00:00")
+
+p5 <- ggplot(hourlymeans_micrositecompare_df, aes(x=time, y=open.shrub_T, color = site)) + 
+  geom_point() +
+ coord_x_datetime(xlim = c("2021-04-01 00:00", "2021-04-07 00:00"))
+p5
+
+
+time_index <- seq(from = as.POSIXct("2012-05-15 07:00"),
+                  to   = as.POSIXct("2012-05-17 18:00"),
+                  by   = "hour")
+set.seed(1)
+value <- rnorm(n = length(time_index))
+hourly_data <- tibble(time.index = time_index,
+                      value      = value)
+hourly_data %>%
+  ggplot(aes(x = time.index, y = value)) +
+  geom_point() +
+  coord_x_datetime(xlim = c("2012-05-15 07:00:00", "2012-05-15 16:00:00"))
+```
+
+# Microsite Comparisons
+
+```{r}
+# read in the combined L2 dataset (all sites, all times, all microsites)
+
+# plot T each hour by site, comparing microsites
+p <- ggplot(KestrelL2_hourlymeans_df, aes(x=time, y=mean_T, color = microsite)) + geom_line() +
+  labs(title = "") +
+  xlab("Date") +
+  ylab("Temperature (C)") +
+  scale_x_datetime(date_breaks = "2 week", labels = date_format("%b %d"))
+p + facet_grid(site ~ .)
+
+# plot RH each hour by site, comparing microsites
+p <- ggplot(KestrelL2_hourlymeans_df, aes(x=time, y=mean_RH, color = microsite)) + geom_line() +
+  labs(title = "") +
+  xlab("Date") +
+  ylab("RH (%)") +
+  scale_x_datetime(date_breaks = "2 week", labels = date_format("%b %d"))
+p + facet_grid(site ~ .)
+
+# convert from long to wide form to calculate differences between microsites at a given time
+microsite_diff_df <- KestrelL2_hourlymeans_df %>% 
+  select(site, microsite, time, mean_T,mean_RH) %>%
+  pivot_wider(names_from=c(microsite), 
+              values_from=c(mean_T, mean_RH)) 
+
+microsite_diff_df$shrub.openT <- microsite_diff_df$mean_T_Shrub - microsite_diff_df$mean_T_Open  
+microsite_diff_df$shrub.openRH <- microsite_diff_df$mean_RH_Shrub - microsite_diff_df$mean_RH_Open 
+
+# plot shrub minus open T by site
+p <- ggplot(microsite_diff_df, aes(x=time, y=shrub.openT, group = 1)) + geom_line() +
+  labs(title = "") +
+  xlab("Date") +
+  ylab("Shrub - Open Temperature (C)") +
+  scale_x_datetime(date_breaks = "2 week", labels = date_format("%b %d"))
+p + facet_grid(site ~ .)
+
+# plot shrub minus open RH by site
+p <- ggplot(microsite_diff_df, aes(x=time, y=shrub.openRH, group = 1)) + geom_line() +
+  labs(title = "") +
+  xlab("Date") +
+  ylab("Shrub RH (%) - Open RH (%)") +
+  scale_x_datetime(date_breaks = "2 week", labels = date_format("%b %d"))
+p + facet_grid(site ~ .)
+
+
+# Scatter plots of climate space ------------------------------------------
+
+p <- ggplot(microsite_diff_df, aes(x=mean_T_Open, y=mean_T_Shrub)) + geom_point() +
+  labs(title = "") +
+  xlab("Open Temperature (C)") +
+  ylab("Shrub Temperature (C)") 
+p + facet_grid(site ~ .) + geom_abline(aes(slope = 1, intercept=0), color = "blue")
+
+p1 <- ggplot(microsite_diff_df, aes(x=mean_RH_Open, y=mean_RH_Shrub)) + geom_point() +
+  labs(title = "") +
+  xlab("Open RH (%)") +
+  ylab("Shrub RH (%)") 
+p1 + facet_grid(site ~ .) + geom_abline(aes(slope = 1, intercept=0), color = "blue")
+```
