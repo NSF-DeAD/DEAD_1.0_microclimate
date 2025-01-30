@@ -33,18 +33,25 @@ sessionInfo()
 *Note that this pulls the L2 csv file from Dropbox. Check that the most recent file is called.*
 
 ```{r}
-#|label: Read-in-L2-data
+#|label: Read-and-clean-L2-data
 
 # combined L2 dataset (all sites, all times, all microsites)
 ### **will need to be updated with latest file version**
 ### current file is "L2_DEAD_combined_data_2024-02-13_HT.csv"
 KestrelL2df = read.csv("https://www.dropbox.com/scl/fi/58ox4qkylabvfgap5m59c/L2_DEAD_combined_data_2024-02-13_HT.csv?rlkey=0nhpajnrw8jsseeqixl182hlx&dl=1") 
 
-# Data clean-up
+# check the loggers that we have
+KestrelL2df |>
+  group_by(site, loggerID) |>
+  summarize(n=n())
+
+# Data clean-up 
 # remove the extra columns that gets added in (columns "X" and "...1")
 KestrelL2df <- KestrelL2df[, -c(1,2)]
 # make LoggerID treated as categorical (factor) rather than continuous variable
 KestrelL2df$loggerID <- as.factor(KestrelL2df$loggerID) 
+
+# Pull out date and time from the datetime stamp
 # change column name from time to datetime
 KestrelL2df <- KestrelL2df |> 
   dplyr::rename(datetime = time)
@@ -69,7 +76,7 @@ Below are separate plots for each logger (grouped by site). These are intended t
 # DBG
 KestrelL2df |>
   subset(site=="DBG") |>
-  ggplot(aes(x=time, y=RH, color = microsite, group = 1)) + 
+  ggplot(aes(x=datetime, y=RH, color = microsite, group = 1)) + 
     labs(title = "DBG") +
     geom_line() +
     xlab("Date") +
@@ -80,7 +87,7 @@ KestrelL2df |>
 # JER
 KestrelL2df |>
   subset(site=="JER") |>
-  ggplot(aes(x=time, y=RH, color = microsite, group = 1)) + 
+  ggplot(aes(x=datetime, y=RH, color = microsite, group = 1)) + 
     labs(title = "JER") +
     geom_line() +
     xlab("Date") +
@@ -91,7 +98,7 @@ KestrelL2df |>
 # Moab
 KestrelL2df |>
   subset(site=="Moab") |>
-  ggplot(aes(x=time, y=RH, color = microsite, group = 1)) + 
+  ggplot(aes(x=datetime, y=RH, color = microsite, group = 1)) + 
     labs(title = "Moab") +
     geom_line() +
     xlab("Date") +
@@ -102,7 +109,7 @@ KestrelL2df |>
 # MOJ
 KestrelL2df |>
   subset(site=="MOJ") |>
-  ggplot(aes(x=time, y=RH, color = microsite, group = 1)) + 
+  ggplot(aes(x=datetime, y=RH, color = microsite, group = 1)) + 
     labs(title = "MOJ") +
     geom_line() +
     xlab("Date") +
@@ -113,7 +120,7 @@ KestrelL2df |>
 # RCEW
 KestrelL2df |>
   subset(site=="RCEW") |>
-  ggplot(aes(x=time, y=RH, color = microsite, group = 1)) + 
+  ggplot(aes(x=datetime, y=RH, color = microsite, group = 1)) + 
     labs(title = "RCEW") +
     geom_line() +
     xlab("Date") +
