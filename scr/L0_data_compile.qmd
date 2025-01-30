@@ -7,27 +7,21 @@ editor_options:
   chunk_output_type: console
 ---
 
-## Quarto
+This code pulls together data from the raw csv files downloaded from the Kestrel Drop2 dataloggers used in the DEAD 1.0 project.
+
+## Libraries and File Input
 
 ```{r}
+#| label: load needed packages
 library(tidyverse)
 library(here)
 ```
 
-You can add options to executable code like this
-
-```{r}
-
-
-```
-
-The `echo: false` option disables the printing of code (only output is displayed).
-
 ```{r}
 ```
 
 ```{r}
-library(tidyverse)
+#| label: read in data files
 
 read_and_combine_files <- function(folder_path) {
   all_files <- list.files(path = here("L0 raw data", folder_path), 
