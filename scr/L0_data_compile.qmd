@@ -39,13 +39,18 @@ Note that the "more columns than column names" error is likely to happen. Find t
 Much of this code is based on the commentary from: <https://aosmith.rbind.io/2017/12/31/many-datasets/>
 
 ```{r}
-# list all files to read in
-### Note that this reference from the DERT Dropbox
+#| label: generate list of files to read in
+
 allfiles <- list.files(
-  path = file.path("/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/DEAD project/logger data/L0 raw data/DBG time 2"),  
-  pattern = "\\.csv$",  # Ensure proper regex for .csv files  
-  full.names = TRUE  
+  path = "/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/DEAD_project/logger_data",  
+  pattern = "\\.csv$",  
+  full.names = TRUE,  
+  recursive = TRUE
 )
+
+# Exclude files from "zEXTRA_files"
+# this folder has some Kestrel files that appear to be redundant as well as some iButton files that will need to be read separately
+allfiles <- allfiles[!grepl("zEXTRA_files", allfiles)]
 
 # reading and extract loggerID
 read_fun = function(path) {
@@ -68,161 +73,96 @@ read_fun = function(path) {
 read_fun(allfiles[6]) # use to test the function on an individual file
 ```
 
+### Combine Files
+
 ```{r}
-#| label: read in data files
+#| label: combine-kestrel-files
 
-read_and_combine_files <- function(folder_path) {
-  all_files <- list.files(path = here("L0 raw data", folder_path),
-                          full.names = TRUE)
-  read_fun <- function(path) {
-    # Read only the necessary columns
-    first_row <- readLines(path, n = 1)  # Read the first row
-    num_cols <- length(strsplit(first_row, ",")[[1]])
+# Function to safely read files and handle errors
+safe_read_fun <- possibly(read_fun, otherwise = NULL)  
 
-    col_names <- c("datetime", "temperature", "RH", "heatindex", "dewpoint", "datatype")
-    if (num_cols > length(col_names)) {
-      col_names <- c(col_names, paste0("V", (length(col_names) + 1):(num_cols - length(col_names))))
-    }
+# Combine all valid CSV files into one dataframe
+combined_kestrel_notcleaned <- map_dfr(allfiles, safe_read_fun)
 
-    test <- read.csv(path, 
-                     skip = 5,
-                     header = FALSE,
-                     col.names = col_names)
+# Remove NULL results (if any files failed to read)
+combined_kestrel_notcleaned <- combined_kestrel_notcleaned %>% filter(complete.cases(.))
 
-    allnames <- str_split(path, pattern = "/", simplify = TRUE)
-    test$loggerID <- str_extract(allnames[, ncol(allnames)], pattern = "2[0-9][0-9][0-9][0-9][0-9][0-9]")
-    
-    # Convert to numeric
-    test$RH <- as.numeric(as.character(test$RH))
-    test$heatindex <- as.numeric(as.character(test$heatindex))
-    test$dewpoint <- as.numeric(as.character(test$dewpoint))
-    test$temperature <- as.numeric(as.character(test$temperature))
-    test$loggerID <- as.numeric(as.character(test$loggerID))
+# check the number of sites and loggers in the file
+combined_kestrel_notcleaned |>
+  group_by(loggerID) |> 
+  summarize(n = n())
+```
 
-    # Define multiple datetime formats
-    datetime_formats <- c("%m/%d/%y %H:%M", "%m/%d/%y %H:%M, tz = MST", 
-    "%m/%d/%y %H:%M:%S")
+## Add MetaData
 
-    # Try each format until one succeeds
-    for (format in datetime_formats) {
-      tryCatch({
-        test$datetime <- as.POSIXlt(test$datetime, format = format)
-        break  # Exit the loop if successful
-      }, error = function(e) {
-        cat("Error:", conditionMessage(e), "\n")
-      })
-    }
+Match the logger ID with the master datasheet that has assignments for site, block, and microsite for each Kestrel
 
-    test
-  }
+```{r}
+#| label: kestrel IDs
 
-  # Combine all files using bind_rows
-  combined_data <- bind_rows(map(all_files, read_fun))
+# Read in the "KestrelIDs.csv" dataset from the Dropbox link 
+KestrelIDs <- read_csv("https://www.dropbox.com/scl/fi/dnpj8xif639dkimbgrzu4/KestrelIDs.csv?rlkey=9ai93kbi3u4jg0aolh9fji4v3&dl=1")
 
-  # Add logger type column
-  combined_data$loggertype <- "Kestrel"
-
-  # Check the number of loggers in the file
-  combined_data %>%
-    group_by(loggerID) %>%
-    summarize(n = n())
-
-  # Add microsite and block information
-  df_loggers <- read.csv("KestrelIDs.csv", header = TRUE)
-  df_loggers$loggerID <- as.numeric(df_loggers$loggerID)
-
-  combined_data <- left_join(combined_data, df_loggers, by = "loggerID")
-  
-  combined_data
-}
+# Perform a left join to merge the additional data based on "loggerID"
+combined_kestrel_notcleaned <- combined_kestrel_notcleaned |>
+  left_join(KestrelIDs, by = "loggerID")
 
 ```
 
-```{r}
-# Example usage
-combined_DBG_time2_notcleaned <- read_and_combine_files("DBG time 2")
-combined_DBG_time3_notcleaned <- read_and_combine_files("DBG time 3")
-combined_DBG_time4_notcleaned <- read_and_combine_files("DBG time 4")
-```
-
-convert to POSIXct before
+The Kestrels change the date and time formatting around in a maddening way. Make the date-time formatting align for all of the lines.
 
 ```{r}
-library(tidyverse)
 
-read_and_combine_files <- function(folder_path) {
-  all_files <- list.files(path = here("L0 raw data", folder_path), 
-                          full.names = TRUE)
+#| label: Fix-datetime-formatting 
 
-  read_fun <- function(path) {
-    # Read only the necessary columns
-    first_row <- readLines(path, n = 1)  # Read the first row
-    num_cols <- length(strsplit(first_row, ",")[[1]])
+# make a new file for messing around with date-time formats
+combined_kestrel_cleaning <- combined_kestrel_notcleaned 
 
-    col_names <- c("datetime", "temperature", "RH", "heatindex", "dewpoint", "datatype")
-    if (num_cols > length(col_names)) {
-      col_names <- c(col_names, paste0("V", (length(col_names) + 1):(num_cols - length(col_names))))
-    }
+# Initialize the 'time' column
+combined_kestrel_cleaning$time <- NA
 
-    test <- read.csv(path, 
-                     skip = 5,
-                     header = FALSE,
-                     col.names = col_names)
+# Try parsing with flexible parse_date_time function
+combined_kestrel_cleaning$time <- parse_date_time(
+  combined_kestrel_cleaning$datetime, 
+  orders = c("mdy HM", "ymd HMS p"),  # List of possible formats
+  quiet = FALSE  # This will show warnings and errors if parsing fails
+)
 
-    allnames <- str_split(path, pattern = "/", simplify = TRUE)
-    test$loggerID <- str_extract(allnames[, ncol(allnames)], pattern = "2[0-9][0-9][0-9][0-9][0-9][0-9]")
-    
-    # Convert to numeric
-    test$RH <- as.numeric(as.character(test$RH))
-    test$heatindex <- as.numeric(as.character(test$heatindex))
-    test$dewpoint <- as.numeric(as.character(test$dewpoint))
-    test$temperature <- as.numeric(as.character(test$temperature))
-    test$loggerID <- as.numeric(as.character(test$loggerID))
-
-    test
-  }
-
-  # Read all files and convert datetime column to POSIXlt before combining
-  all_data <- map(all_files, ~{
-    data <- read_fun(.x)
-    # Define multiple datetime formats
-    datetime_formats <- c("%m/%d/%y %H:%M", "%Y-%m-%d %H:%M:%S",
-                          "%m/%d/%y %H:%M")
-    
-    # Try each format until one succeeds
-    for (format in datetime_formats) {
-      tryCatch({
-        data$datetime <- as.POSIXlt(data$datetime, format = format, tz = "MST")
-        break  # Exit the loop if successful
-      }, error = function(e) {
-        cat("Error:", conditionMessage(e), "\n")
-      })
-    }
-    
-    data
-  })
-
-  # Combine all files using bind_rows
-  combined_data <- bind_rows(all_data)
-
-  # Add logger type column
-  combined_data$loggertype <- "Kestrel"
-
-  # Check the number of loggers in the file
-  combined_data %>%
-    group_by(loggerID) %>%
-    summarize(n = n())
-
-  # Add microsite and block information
-  df_loggers <- read.csv("KestrelIDs.csv", header = TRUE)
-  df_loggers$loggerID <- as.numeric(df_loggers$loggerID)
-
-  combined_data <- left_join(combined_data, df_loggers, by = "loggerID")
-
-  combined_data
+# Check if there are still NA values after parsing
+if (any(is.na(combined_kestrel_cleaning$time))) {
+  cat("Some entries could not be parsed!\n")
+  # Print rows where the time column is still NA
+  print(combined_kestrel_cleaning[is.na(combined_kestrel_cleaning$time),])
 }
+## there is one file from logger 2593668 (DBG) that did not include dates. No worries as these logs all appear to be duplicated in a later file. 
 
-# Example usage
-combined_DBG_time4_notcleaned <- read_and_combine_files("DBG time 4")
+# Remove rows with NA time values (logger 2593668)
+combined_kestrel_cleaning <- combined_kestrel_cleaning[!is.na(combined_kestrel_cleaning$time), ]
 
+# Ensure the time is in 24-hour format (POSIXct will handle it correctly)
+combined_kestrel_cleaning$time <- as.POSIXct(combined_kestrel_cleaning$time, format = "%Y-%m-%d %H:%M:%S")
+
+# Round down to the nearest minute (sets seconds to :00)
+combined_kestrel_cleaning$time <- floor_date(combined_kestrel_cleaning$time, unit = "minute")
+
+# Remove any duplicate lines - there are many of these due to re-downloading the same loggers and not cleaning off old data in between downloads
+combined_kestrel_cleaning <- combined_kestrel_cleaning |>
+  distinct()
+
+#### START HERE - START DATE DIFFERS AMONG LOGGERS
+# remove any data before the deployment date
+# NOTE THAT THE DATE MAY NEED TO BE ADJUSTED - PLACE THE DESIRED START DATE BELOW
+#L1_kestrel_data <-combined_kestrel_notcleaned[combined_kestrel_notcleaned[["time"]] #>= "2024-12-18", ]  
+
+# Check that all loggers are still present
+L1_kestrel_data |>
+  group_by(loggerID) |> 
+  summarize(n = n())
+
+#save the output as a .csv file
+### FIX FOR CURRENT FILES
+#write.csv(L1_kestrel_data, file = file.path(
+  "/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/OngavaDungDecay/MicroclimateData/L1", 
+  "Ongava_kestrel_L1.csv"
+))
 ```
