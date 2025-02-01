@@ -189,3 +189,139 @@ write.csv(L2, file = file.path(
   "DEAD_Kestrel_L2.csv"
 ))
 ```
+
+### Plots: Individual Loggers
+
+Plot out each individual logger to check for missing data or other possibly data issues
+
+```{r}
+#| label: DBG plots
+
+DBG_RH_by_logger <- L2 |>
+  subset(site=="DBG") |> 
+  ggplot(aes(x=datetime, y=RH, color = microsite, group = 1)) + 
+    geom_line() +
+    labs(title = "DBG") +
+    xlab("Date") +
+    ylab("Relative Humidity (%)") +
+    scale_x_datetime(date_breaks = "2 months", labels = date_format("%b %Y")) +
+    facet_grid(loggerID ~ .)
+DBG_RH_by_logger
+
+DBG_T_by_logger <- L2 |>
+  subset(site=="DBG") |> 
+  ggplot(aes(x=datetime, y=temperature, color = microsite, group = 1)) + 
+    geom_line() +
+    labs(title = "DBG") +
+    xlab("Date") +
+    ylab("Temperature (C)") +
+    scale_x_datetime(date_breaks = "2 months", labels = date_format("%b %Y")) +
+    facet_grid(loggerID ~ .)
+DBG_T_by_logger
+
+```
+
+```{r}
+#| label: JER plots
+
+JER_RH_by_logger <- L2 |>
+  subset(site=="JER") |> 
+  ggplot(aes(x=datetime, y=RH, color = microsite, group = 1)) + 
+    geom_line() +
+    labs(title = "JER") +
+    xlab("Date") +
+    ylab("Relative Humidity (%)") +
+    scale_x_datetime(date_breaks = "2 months", labels = date_format("%b %Y")) +
+    facet_grid(loggerID ~ .)
+JER_RH_by_logger
+
+JER_T_by_logger <- L2 |>
+  subset(site=="JER") |> 
+  ggplot(aes(x=datetime, y=temperature, color = microsite, group = 1)) + 
+    geom_line() +
+    labs(title = "JER") +
+    xlab("Date") +
+    ylab("Temperature (C)") +
+    scale_x_datetime(date_breaks = "2 months", labels = date_format("%b %Y")) +
+    facet_grid(loggerID ~ .)
+JER_T_by_logger
+
+```
+
+```{r}
+#| label: Moab plots
+
+Moab_RH_by_logger <- L2 |>
+  subset(site=="Moab") |> 
+  ggplot(aes(x=datetime, y=RH, color = microsite, group = 1)) + 
+    geom_line() +
+    labs(title = "Moab") +
+    xlab("Date") +
+    ylab("Relative Humidity (%)") +
+    scale_x_datetime(date_breaks = "2 months", labels = date_format("%b %Y")) +
+    facet_grid(loggerID ~ .)
+Moab_RH_by_logger
+
+Moab_T_by_logger <- L2 |>
+  subset(site=="Moab") |> 
+  ggplot(aes(x=datetime, y=temperature, color = microsite, group = 1)) + 
+    geom_line() +
+    labs(title = "Moab") +
+    xlab("Date") +
+    ylab("Temperature (C)") +
+    scale_x_datetime(date_breaks = "2 months", labels = date_format("%b %Y")) +
+    facet_grid(loggerID ~ .)
+Moab_T_by_logger
+```
+
+```{r}
+#| label: MOJ plots
+
+MOJ_RH_by_logger <- L2 |>
+  subset(site=="MOJ") |> 
+  ggplot(aes(x=datetime, y=RH, color = microsite, group = 1)) + 
+    geom_line() +
+    labs(title = "MOJ") +
+    xlab("Date") +
+    ylab("Relative Humidity (%)") +
+    scale_x_datetime(date_breaks = "2 months", labels = date_format("%b %Y")) +
+    facet_grid(loggerID ~ .)
+MOJ_RH_by_logger
+
+MOJ_T_by_logger <- L2 |>
+  subset(site=="MOJ") |> 
+  ggplot(aes(x=datetime, y=temperature, color = microsite, group = 1)) + 
+    geom_line() +
+    labs(title = "MOJ") +
+    xlab("Date") +
+    ylab("Temperature (C)") +
+    scale_x_datetime(date_breaks = "2 months", labels = date_format("%b %Y")) +
+    facet_grid(loggerID ~ .)
+MOJ_T_by_logger
+```
+
+```{r}
+#| label: RCEW plots
+
+RCEW_RH_by_logger <- L2 |>
+  subset(site=="RCEW") |> 
+  ggplot(aes(x=datetime, y=RH, color = microsite, group = 1)) + 
+    geom_line() +
+    labs(title = "RCEW") +
+    xlab("Date") +
+    ylab("Relative Humidity (%)") +
+    scale_x_datetime(date_breaks = "2 months", labels = date_format("%b %Y")) +
+    facet_grid(loggerID ~ .)
+RCEW_RH_by_logger
+
+RCEW_T_by_logger <- L2 |>
+  subset(site=="RCEW") |> 
+  ggplot(aes(x=datetime, y=temperature, color = microsite, group = 1)) + 
+    geom_line() +
+    labs(title = "RCEW") +
+    xlab("Date") +
+    ylab("Temperature (C)") +
+    scale_x_datetime(date_breaks = "2 months", labels = date_format("%b %Y")) +
+    facet_grid(loggerID ~ .)
+RCEW_T_by_logger
+```
