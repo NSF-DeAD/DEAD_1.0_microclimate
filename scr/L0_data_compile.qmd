@@ -185,7 +185,7 @@ L2 <- L2 |>
 
 #save the L2 output as a .csv file into the DEAD Dropbox
 write.csv(L2, file = file.path(
-  "/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/DEAD_project/logger_data/L1data", 
+  "/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/DEAD_project/logger_data/L2data", 
   "DEAD_Kestrel_L2.csv"
 ))
 ```
