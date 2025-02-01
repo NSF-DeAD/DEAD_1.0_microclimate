@@ -30,13 +30,13 @@ Display information about package versions in use when this code was run.
 sessionInfo()
 ```
 
-## L0: Read, Clean, Combine
+## Read, Clean, and Combine Original Files
 
-### List Kestrel Files
+### List Kestrel L0 Files (raw csv files downloaded from Kestrels)
 
 Note that the "more columns than column names" error is likely to happen. Find the offending file (use the last line of code in this chunk to do so) and delete extra columns to the right of the data.\
 \
-Much of this code is based on the commentary from: <https://aosmith.rbind.io/2017/12/31/many-datasets/>
+Some of this code is based on the commentary from: <https://aosmith.rbind.io/2017/12/31/many-datasets/>
 
 ```{r}
 #| label: generate list of files to read in
@@ -73,7 +73,7 @@ read_fun = function(path) {
 #read_fun(allfiles[6]) # use to test the function on an individual file
 ```
 
-### Combine Files
+## L1: Combine L0 Files
 
 ```{r}
 #| label: combine-kestrel-files
@@ -82,18 +82,18 @@ read_fun = function(path) {
 safe_read_fun <- possibly(read_fun, otherwise = NULL)  
 
 # Combine all valid CSV files into one dataframe
-combined_kestrel_notcleaned <- map_dfr(allfiles, safe_read_fun)
+L1_combining <- map_dfr(allfiles, safe_read_fun)
 
 # Remove NULL results (if any files failed to read)
-combined_kestrel_notcleaned <- combined_kestrel_notcleaned %>% filter(complete.cases(.))
+L1_combining <- L1_combining %>% filter(complete.cases(.))
 
 # check the number of sites and loggers in the file
-combined_kestrel_notcleaned |>
+L1_combining |>
   group_by(loggerID) |> 
   summarize(n = n())
 ```
 
-## Add MetaData
+### Add MetaData
 
 Match the logger ID with the master datasheet that has assignments for site, block, and microsite for each Kestrel
 
@@ -104,7 +104,7 @@ Match the logger ID with the master datasheet that has assignments for site, blo
 KestrelIDs <- read_csv("https://www.dropbox.com/scl/fi/dnpj8xif639dkimbgrzu4/KestrelIDs.csv?rlkey=9ai93kbi3u4jg0aolh9fji4v3&dl=1")
 
 # Perform a left join to merge the additional data based on "loggerID"
-combined_kestrel_notcleaned <- combined_kestrel_notcleaned |>
+L1_merged <- L1_combining |>
   left_join(KestrelIDs, by = "loggerID")
 
 ```
@@ -115,59 +115,77 @@ The Kestrels change the date and time formatting around in a maddening way. Make
 #| label: Fix-datetime-formatting 
 
 # make a new file for messing around with date-time formats
-combined_kestrel_cleaning <- combined_kestrel_notcleaned 
+L1_cleaning <- L1_merged 
 
 # Initialize a 'datetime' column that will be the correctly formatted datetime
-combined_kestrel_cleaning$datetime <- NA
+L1_cleaning$datetime <- NA
 
 # Try parsing with flexible parse_date_time function
-combined_kestrel_cleaning$datetime <- parse_date_time(
-  combined_kestrel_cleaning$loggertime, 
+L1_cleaning$datetime <- parse_date_time(
+  L1_cleaning$loggertime, 
   orders = c("mdy HM", "ymd HMS p"),  # List of possible formats
   quiet = FALSE  # This will show warnings and errors if parsing fails
 )
 
 # Check if there are still NA values after parsing
-if (any(is.na(combined_kestrel_cleaning$datetime))) {
+if (any(is.na(L1_cleaning$datetime))) {
   cat("Some entries could not be parsed!\n")
   # Print rows where the time column is still NA
-  print(combined_kestrel_cleaning[is.na(combined_kestrel_cleaning$datetime),])
+  print(L1_cleaning[is.na(L1_cleaning$datetime),])
 }
 ## there is one file from logger 2593668 (DBG) that did not include dates. No worries as these logs all appear to be duplicated in a later file. 
 
 # Remove rows with NA time values (logger 2593668)
-combined_kestrel_cleaning <- combined_kestrel_cleaning[!is.na(combined_kestrel_cleaning$datetime), ]
+L1_cleaning <- L1_cleaning[!is.na(L1_cleaning$datetime), ]
 
 # Ensure the time is in 24-hour format (POSIXct will handle it correctly)
-combined_kestrel_cleaning$datetime <- as.POSIXct(combined_kestrel_cleaning$datetime, format = "%Y-%m-%d %H:%M:%S")
+L1_cleaning$datetime <- as.POSIXct(L1_cleaning$datetime, format = "%Y-%m-%d %H:%M:%S")
 
 # Round down to the nearest minute (sets seconds to :00)
-combined_kestrel_cleaning$datetime <- floor_date(combined_kestrel_cleaning$datetime, unit = "minute")
+L1_cleaning$datetime <- floor_date(L1_cleaning$datetime, unit = "minute")
 
+# This is the completed L1 file
+L1_clean <- L1_cleaning
 
+#save the L1 output as a .csv file into the DEAD Dropbox
+write.csv(L1_clean, file = file.path(
+  "/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/DEAD_project/logger_data/L1data", 
+  "DEAD_Kestrel_L1.csv"
+))
 ```
+
+## L2: Data Cleaned of Extra Lines
 
 ```{r}
 #| label: Filter to remove extra lines
 
+# Move on to Level 2 cleaning
+L2_cleaning <- L1_clean
+
 # Remove any duplicate lines - there are many of these due to re-downloading the same loggers and not cleaning off old data in between downloads
-combined_kestrel_cleaning <- combined_kestrel_cleaning |>
+L2_cleaning <- L2_cleaning |>
   distinct()
 
 # remove any data before the deployment date, using starttime and startdate from KestrelIDs that correspond with each loggerID 
-L1 <- combined_kestrel_cleaning |>
+L2 <- L2_cleaning |>
   mutate(start_datetime = as.POSIXct(paste(startdate, starttime), 
                                      format = "%m/%d/%Y %H:%M")) |>
-  filter(datetime >= start_datetime) 
+  filter(datetime >= start_datetime) |>
+  select(-startdate, -starttime, -loggertime) 
 
 # Check that all loggers are still present
-L1 |>
+L2 |>
   group_by(loggerID) |> 
   summarize(n = n())
 
-#save the L1 output as a .csv file into the DEAD Dropbox
-write.csv(L1, file = file.path(
+# reorder columns and get rid of extra columns (including heatindex and dewpoint)
+L2 <- L2 |>
+  select(-datatype, -start_datetime, -heatindex, -dewpoint)|>
+  select(datetime, site, block, microsite, cluster, loggerID, everything())  # Reorder columns
+
+#save the L2 output as a .csv file into the DEAD Dropbox
+write.csv(L2, file = file.path(
   "/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/DEAD_project/logger_data/L1data", 
-  "DEAD_Kestrel_L1.csv"
+  "DEAD_Kestrel_L2.csv"
 ))
 ```
