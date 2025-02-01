@@ -57,7 +57,7 @@ read_fun = function(path) {
   test = read.csv(path, 
                   skip = 5,
                   header = FALSE,
-                  col.names = c("datetime", "temperature", "RH", "heatindex", "dewpoint", "datatype") )
+                  col.names = c("loggertime", "temperature", "RH", "heatindex", "dewpoint", "datatype") )
   allnames = str_split( path, pattern = "/", simplify = TRUE)
  test$loggerID = str_extract(allnames[, ncol(allnames)], pattern = "2[0-9][0-9][0-9][0-9][0-9][0-9]") #extract the loggerID from the file name and add as a column
   test$RH <- as.numeric(as.character(test$RH))
@@ -70,7 +70,7 @@ read_fun = function(path) {
 
 # Line below is useful for testing if logger name is being assigned
 # change the number in brackets to check show the top section of each file
-read_fun(allfiles[6]) # use to test the function on an individual file
+#read_fun(allfiles[6]) # use to test the function on an individual file
 ```
 
 ### Combine Files
@@ -112,57 +112,62 @@ combined_kestrel_notcleaned <- combined_kestrel_notcleaned |>
 The Kestrels change the date and time formatting around in a maddening way. Make the date-time formatting align for all of the lines.
 
 ```{r}
-
 #| label: Fix-datetime-formatting 
 
 # make a new file for messing around with date-time formats
 combined_kestrel_cleaning <- combined_kestrel_notcleaned 
 
-# Initialize the 'time' column
-combined_kestrel_cleaning$time <- NA
+# Initialize a 'datetime' column that will be the correctly formatted datetime
+combined_kestrel_cleaning$datetime <- NA
 
 # Try parsing with flexible parse_date_time function
-combined_kestrel_cleaning$time <- parse_date_time(
-  combined_kestrel_cleaning$datetime, 
+combined_kestrel_cleaning$datetime <- parse_date_time(
+  combined_kestrel_cleaning$loggertime, 
   orders = c("mdy HM", "ymd HMS p"),  # List of possible formats
   quiet = FALSE  # This will show warnings and errors if parsing fails
 )
 
 # Check if there are still NA values after parsing
-if (any(is.na(combined_kestrel_cleaning$time))) {
+if (any(is.na(combined_kestrel_cleaning$datetime))) {
   cat("Some entries could not be parsed!\n")
   # Print rows where the time column is still NA
-  print(combined_kestrel_cleaning[is.na(combined_kestrel_cleaning$time),])
+  print(combined_kestrel_cleaning[is.na(combined_kestrel_cleaning$datetime),])
 }
 ## there is one file from logger 2593668 (DBG) that did not include dates. No worries as these logs all appear to be duplicated in a later file. 
 
 # Remove rows with NA time values (logger 2593668)
-combined_kestrel_cleaning <- combined_kestrel_cleaning[!is.na(combined_kestrel_cleaning$time), ]
+combined_kestrel_cleaning <- combined_kestrel_cleaning[!is.na(combined_kestrel_cleaning$datetime), ]
 
 # Ensure the time is in 24-hour format (POSIXct will handle it correctly)
-combined_kestrel_cleaning$time <- as.POSIXct(combined_kestrel_cleaning$time, format = "%Y-%m-%d %H:%M:%S")
+combined_kestrel_cleaning$datetime <- as.POSIXct(combined_kestrel_cleaning$datetime, format = "%Y-%m-%d %H:%M:%S")
 
 # Round down to the nearest minute (sets seconds to :00)
-combined_kestrel_cleaning$time <- floor_date(combined_kestrel_cleaning$time, unit = "minute")
+combined_kestrel_cleaning$datetime <- floor_date(combined_kestrel_cleaning$datetime, unit = "minute")
+
+
+```
+
+```{r}
+#| label: Filter to remove extra lines
 
 # Remove any duplicate lines - there are many of these due to re-downloading the same loggers and not cleaning off old data in between downloads
 combined_kestrel_cleaning <- combined_kestrel_cleaning |>
   distinct()
 
-#### START HERE - START DATE DIFFERS AMONG LOGGERS
-# remove any data before the deployment date
-# NOTE THAT THE DATE MAY NEED TO BE ADJUSTED - PLACE THE DESIRED START DATE BELOW
-#L1_kestrel_data <-combined_kestrel_notcleaned[combined_kestrel_notcleaned[["time"]] #>= "2024-12-18", ]  
+# remove any data before the deployment date, using starttime and startdate from KestrelIDs that correspond with each loggerID 
+L1 <- combined_kestrel_cleaning |>
+  mutate(start_datetime = as.POSIXct(paste(startdate, starttime), 
+                                     format = "%m/%d/%Y %H:%M")) |>
+  filter(datetime >= start_datetime) 
 
 # Check that all loggers are still present
-L1_kestrel_data |>
+L1 |>
   group_by(loggerID) |> 
   summarize(n = n())
 
-#save the output as a .csv file
-### FIX FOR CURRENT FILES
-#write.csv(L1_kestrel_data, file = file.path(
-  "/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/OngavaDungDecay/MicroclimateData/L1", 
-  "Ongava_kestrel_L1.csv"
+#save the L1 output as a .csv file into the DEAD Dropbox
+write.csv(L1, file = file.path(
+  "/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/DEAD_project/logger_data/L1data", 
+  "DEAD_Kestrel_L1.csv"
 ))
 ```
