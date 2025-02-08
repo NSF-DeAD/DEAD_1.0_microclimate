@@ -168,10 +168,19 @@ L2_cleaning <- L2_cleaning |>
 
 # remove any data before the deployment date, using starttime and startdate from KestrelIDs that correspond with each loggerID 
 L2 <- L2_cleaning |>
-  mutate(start_datetime = as.POSIXct(paste(startdate, starttime), 
-                                     format = "%m/%d/%Y %H:%M")) |>
-  filter(datetime >= start_datetime) |>
-  select(-startdate, -starttime, -loggertime) 
+mutate(
+    startdate = as.character(startdate),  # Ensure it's a character
+    starttime = as.character(starttime),
+    start_datetime = as.POSIXct(paste(startdate, starttime), format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
+  )
+
+                                  
+                                     
+                                     # |>
+  #filter(datetime >= start_datetime) 
+
+
+select(-startdate, -starttime, -loggertime) 
 
 # Check that all loggers are still present
 L2 |>
