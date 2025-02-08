@@ -117,15 +117,17 @@ The Kestrels change the date and time formatting around in a maddening way. Make
 # make a new file for messing around with date-time formats
 L1_cleaning <- L1_merged 
 
-# Initialize a 'datetime' column that will be the correctly formatted datetime
-L1_cleaning$datetime <- NA
+# Try parsing with multiple possible formats
+L1_cleaning <- L1_cleaning |>
+  mutate(
+    datetime = parse_date_time(
+      loggertime, 
+      orders = c("mdy HM", "ymd HMS p", "b d, Y I:M:S p"),  # add more formats if necessary
+      tz = "UTC",  # Adjust if necessary
+      quiet = FALSE  # Show warnings if parsing fails
+    )
+  )
 
-# Try parsing with flexible parse_date_time function
-L1_cleaning$datetime <- parse_date_time(
-  L1_cleaning$loggertime, 
-  orders = c("mdy HM", "ymd HMS p"),  # List of possible formats
-  quiet = FALSE  # This will show warnings and errors if parsing fails
-)
 
 # Check if there are still NA values after parsing
 if (any(is.na(L1_cleaning$datetime))) {
@@ -168,19 +170,12 @@ L2_cleaning <- L2_cleaning |>
 
 # remove any data before the deployment date, using starttime and startdate from KestrelIDs that correspond with each loggerID 
 L2 <- L2_cleaning |>
-mutate(
+  mutate(
     startdate = as.character(startdate),  # Ensure it's a character
-    starttime = as.character(starttime),
-    start_datetime = as.POSIXct(paste(startdate, starttime), format = "%Y-%m-%d %H:%M:%S", tz = "UTC")
-  )
-
-                                  
-                                     
-                                     # |>
-  #filter(datetime >= start_datetime) 
-
-
-select(-startdate, -starttime, -loggertime) 
+    starttime = as.character(starttime), # Ensure it's a character
+    start_datetime = as.POSIXct(paste(startdate, starttime), 
+                                format = "%Y-%m-%d %H:%M:%S", tz = "UTC")) |>
+  filter(datetime >= start_datetime) 
 
 # Check that all loggers are still present
 L2 |>
@@ -189,8 +184,9 @@ L2 |>
 
 # reorder columns and get rid of extra columns (including heatindex and dewpoint)
 L2 <- L2 |>
-  select(-datatype, -start_datetime, -heatindex, -dewpoint)|>
-  select(datetime, site, block, microsite, cluster, loggerID, everything())  # Reorder columns
+  select(-datatype, -start_datetime, -heatindex, -dewpoint, 
+         -startdate, -starttime, -loggertime)|>
+  select(datetime, site, block, microsite, cluster, loggerID, everything())  
 
 #save the L2 output as a .csv file into the DEAD Dropbox
 write.csv(L2, file = file.path(
