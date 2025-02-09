@@ -1,1 +1,12 @@
+The R code files in this folder are:
+
+DEAD_Kestrel_data_compile.qmd: This code pulls together the csv files from ~55 different dataloggers, 
+each of which was downloaded ~5 times. This takes the L0 (raw) data, combines into an L1 file, cleans redundant data 
+(e.g., multiple instances of the same time point in different files), removes logs before or after loggers were 
+deployed, and adds meta-data (site, microsite) for each logger. An L2 file is created and stored as output in Dropbox. 
+Plots for RH and temperature for each logger are generated. 
+Note that Moab logger 2605760 seems to be missing logs at the start of the time period. I wasn't able to track down where they 
+get dropped. It is possible that there are similar issues with other loggers. 
+
+L2_Kestrel_plots
 
