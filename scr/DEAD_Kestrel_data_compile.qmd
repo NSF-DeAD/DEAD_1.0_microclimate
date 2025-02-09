@@ -168,14 +168,20 @@ L2_cleaning <- L1_clean
 L2_cleaning <- L2_cleaning |>
   distinct()
 
-# remove any data before the deployment date, using starttime and startdate from KestrelIDs that correspond with each loggerID 
+# remove any data before the deployment date and remove random extra logs that sometimes occur after the logger has been nonfunctional for a while. These are based on enddate, endtime, starttime, and startdate from KestrelID 
+
 L2 <- L2_cleaning |>
   mutate(
-    startdate = as.character(startdate),  # Ensure it's a character
-    starttime = as.character(starttime), # Ensure it's a character
+    startdate = as.character(startdate),  
+    starttime = as.character(starttime),  
+    enddate = as.character(enddate),  
+    endtime = as.character(endtime),  
     start_datetime = as.POSIXct(paste(startdate, starttime), 
-                                format = "%Y-%m-%d %H:%M:%S", tz = "UTC")) |>
-  filter(datetime >= start_datetime) 
+                                format = "%m/%d/%y %H:%M:%S", tz = "UTC"),
+    end_datetime = as.POSIXct(paste(enddate, endtime), 
+                              format = "%m/%d/%y %H:%M:%S", tz = "UTC")) |>
+  filter(!is.na(start_datetime) & !is.na(end_datetime) & 
+          datetime >= start_datetime & datetime <= end_datetime)
 
 # Check that all loggers are still present
 L2 |>
