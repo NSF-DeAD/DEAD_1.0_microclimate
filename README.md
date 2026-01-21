@@ -21,8 +21,7 @@ Code is structured to use data from a Dropbox folder owned by Heather Throop. Ac
 
 The project is structured with the following folders:
 doc: contains text files and other documentation for the project
-results: contains output from analyses such as figures.
-src: source code (.R or .qmd) for analyses in R
+code: source code (.R or .qmd) for analyses in R
 
 The data levels are as follows:
 L0 data - original data from the Kestrel loggers
