@@ -334,4 +334,9 @@ RCEW_T_by_logger <- L2 |>
     facet_grid(loggerID ~ .)
 RCEW_T_by_logger
 ```
+```{r}
+# pull out rows when loggerID is 2593668
+check <- L1_cleaning |>
+  filter(loggerID == 2605760)
+```
 
