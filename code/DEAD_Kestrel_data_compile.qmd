@@ -9,13 +9,12 @@ editor_options:
 
 This code pulls together data from the raw csv files downloaded from the Kestrel Drop2 dataloggers used in the DEAD 1.0 project.
 
-To run this code, all raw Kestrel files should be placed within the "L0" folder for this project on Dropbox. This code pulls data from the Dropbox folder (currently mapped to HT's local drive as API token for Dropbox folder pull not working).
+This code ingests the raw Kestrel csv files that are in the "L0raw_data" folder for this project on Dropbox. This code pulls data from the Dropbox folder using a config.yml file that maps to the Dropbox folder ("\~/DeAD NSF MSB Dryland Decomposition/Field&LabCircle/DEAD1_0/logger_data"). Data are written the same way.
 
-## Libraries and File Input
+
 
 ```{r}
 #| label: load needed packages
-library(here) # v. 0.1
 library(stringr) # v. 1.2.0
 library(purrr) # v. 0.2.3
 library(tidyverse)
@@ -30,6 +29,11 @@ Display information about package versions in use when this code was run.
 sessionInfo()
 ```
 
+```{r}
+# Use the stored config file to define the path for the DERT Data & Metadata folder (in Dropbox) 
+DEADloggers <- config::get()
+```
+
 ## Read, Clean, and Combine Original Files
 
 ### List Kestrel L0 Files (raw csv files downloaded from Kestrels)
@@ -42,9 +46,9 @@ Some of this code is based on the commentary from: <https://aosmith.rbind.io/201
 #| label: generate list of files to read in
 
 allfiles <- list.files(
-  path = "/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/DEAD_project/logger_data",  
-  pattern = "\\.csv$",  
-  full.names = TRUE,  
+  path = file.path(DEADloggers, "L0raw_data"),
+  pattern = "\\.csv$",
+  full.names = TRUE,
   recursive = TRUE
 )
 
@@ -70,7 +74,7 @@ read_fun = function(path) {
 
 # Line below is useful for testing if logger name is being assigned
 # change the number in brackets to check show the top section of each file
-#read_fun(allfiles[6]) # use to test the function on an individual file
+read_fun(allfiles[81]) # use to test the function on an individual file
 ```
 
 ## L1: Combine L0 Files
@@ -101,7 +105,7 @@ Match the logger ID with the master datasheet that has assignments for site, blo
 #| label: kestrel IDs
 
 # Read in the "KestrelIDs.csv" dataset from the Dropbox link 
-KestrelIDs <- read_csv("https://www.dropbox.com/scl/fi/dnpj8xif639dkimbgrzu4/KestrelIDs.csv?rlkey=9ai93kbi3u4jg0aolh9fji4v3&dl=1")
+KestrelIDs <- read_csv(file.path(DEADloggers, "KestrelIDs.csv"))
 
 # Perform a left join to merge the additional data based on "loggerID"
 L1_merged <- L1_combining |>
@@ -117,6 +121,17 @@ The Kestrels change the date and time formatting around in a maddening way. Make
 # make a new file for messing around with date-time formats
 L1_cleaning <- L1_merged 
 
+# define a whole mess of possible date-time formats
+orders <- c(
+  "mdy HM",            # e.g. 7/18/2021 13:00
+  "mdy HMS",           # e.g. 7/18/2021 13:00:00
+  "ymd HMS p",         # e.g. 2021-07-18 01:00:00 PM
+  "Y-m-d H:M:S",       # e.g. 2021-07-18 13:00:00
+  "b d, Y H:M:S",      # e.g. Jul 18, 2021 13:00:00  
+  "b d, Y I:M:S p",    # e.g. Jul 18, 2021 01:00:00 PM
+  "b d Y H:M:S"        # e.g. Jul 18 2021 13:00:00 (no comma)
+)
+
 # Try parsing with multiple possible formats
 L1_cleaning <- L1_cleaning |>
   mutate(
@@ -127,6 +142,22 @@ L1_cleaning <- L1_cleaning |>
       quiet = FALSE  # Show warnings if parsing fails
     )
   )
+
+L1_cleaning <- L1_cleaning |>
+  mutate(
+    # trim whitespace first
+    loggertime_trim = trimws(as.character(loggertime)),
+    # primary parsing attempt using lubridate
+    datetime = parse_date_time(loggertime_trim, orders = orders, tz = "UTC", quiet = TRUE),
+    # fallback: try a strict POSIXct parse for the specific format "Jul 18, 2021 13:00:00"
+    datetime = coalesce(
+      datetime,
+      as.POSIXct(loggertime_trim, format = "%b %d, %Y %H:%M:%S", tz = "UTC"),
+      # final fallback: try a more permissive anytime-like parse if you have anytime installed
+      # anytime::anytime(loggertime_trim, tz = "UTC")
+    )
+  ) |>
+  select(-loggertime_trim)   # drop helper column 
 
 
 # Check if there are still NA values after parsing
@@ -149,11 +180,8 @@ L1_cleaning$datetime <- floor_date(L1_cleaning$datetime, unit = "minute")
 # This is the completed L1 file
 L1_clean <- L1_cleaning
 
-#save the L1 output as a .csv file into the DEAD Dropbox
-write.csv(L1_clean, file = file.path(
-  "/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/DEAD_project/logger_data/L1data", 
-  "DEAD_Kestrel_L1.csv"
-))
+#save the L1 output as a .csv file into the Dropbox
+write.csv(L1_clean, file = file.path(DEADloggers,  "DEAD_Kestrel_L1.csv"))
 ```
 
 ## L2: Data Cleaned of Extra Lines
@@ -194,43 +222,13 @@ L2 <- L2 |>
          -startdate, -starttime, -loggertime)|>
   select(datetime, site, block, microsite, cluster, loggerID, everything())  
 
-#save the L2 output as a .csv file into the DEAD Dropbox
-write.csv(L2, file = file.path(
-  "/Users/hthroop/ASU Dropbox/Heather Throop/DERT (ThroopLab) ASU/Lab Data & Metadata Archives/DEAD_project/logger_data/L2data", 
-  "DEAD_Kestrel_L2.csv"
-))
+#save the L2 output as a .csv file into the Dropbox
+write.csv(L2, file = file.path(DEADloggers,  "DEAD_Kestrel_L2.csv"))
 ```
 
 ### Plots: Individual Loggers
 
 Plot out each individual logger to check for missing data or other possibly data issues
-
-```{r}
-#| label: DBG plots
-
-DBG_RH_by_logger <- L2 |>
-  subset(site=="DBG") |> 
-  ggplot(aes(x=datetime, y=RH, color = microsite, group = 1)) + 
-    geom_line() +
-    labs(title = "DBG") +
-    xlab("Date") +
-    ylab("Relative Humidity (%)") +
-    scale_x_datetime(date_breaks = "2 months", labels = date_format("%b %Y")) +
-    facet_grid(loggerID ~ .)
-DBG_RH_by_logger
-
-DBG_T_by_logger <- L2 |>
-  subset(site=="DBG") |> 
-  ggplot(aes(x=datetime, y=temperature, color = microsite, group = 1)) + 
-    geom_line() +
-    labs(title = "DBG") +
-    xlab("Date") +
-    ylab("Temperature (C)") +
-    scale_x_datetime(date_breaks = "2 months", labels = date_format("%b %Y")) +
-    facet_grid(loggerID ~ .)
-DBG_T_by_logger
-
-```
 
 ```{r}
 #| label: JER plots
@@ -336,3 +334,4 @@ RCEW_T_by_logger <- L2 |>
     facet_grid(loggerID ~ .)
 RCEW_T_by_logger
 ```
+

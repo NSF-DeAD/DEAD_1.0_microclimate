@@ -11,8 +11,7 @@ editor_options:
 
 This is a synthesis of Kestrel logger data for the DEAD project. Loggers were deployed in March 2021 and collected in end of October or early November 2022. Prior R script in this project combines and synthesizes data starting with the first logger downloads. Here output by individual loggers and sites are plotted.
 
-Written July 24, 2023
-updated 2023-07-25, 2025-01-30
+Written July 24, 2023 updated 2023-07-25, 2025-01-30
 
 ```{r}
 #|label: Load-packages
