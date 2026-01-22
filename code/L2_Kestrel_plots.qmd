@@ -36,7 +36,7 @@ DEADloggers <- config::get()
 
 ## List Kestrel Files for Reading In
 
-*Note that this pulls the L2 csv file from Dropbox. Check that the most recent file is called.*
+*This pulls the L2 csv file from Dropbox.*
 
 ```{r}
 #|label: Read-and-clean-L2-data
@@ -51,18 +51,14 @@ L2_cleaning |>
 
 # Data clean-up 
 # remove the extra columns that gets added in (columns "X" and "...1")
-L2_cleaning <- L2_cleaning[, -c(1)]
-# make LoggerID treated as categorical (factor) rather than continuous variable
-L2_cleaning$loggerID <- as.factor(L2_cleaning$loggerID) 
+L2_clean <- L2_cleaning[, -c(1)]
 
-# Pull out date and time from the datetime stamp
-L2_cleaning$datetime <- as.POSIXct(L2_cleaning$datetime, format = "%Y-%m-%d %H:%M:%S")
-# extract the date out of the datetime stamp
-L2_cleaning$date <- as.Date(L2_cleaning$datetime) 
-# extract HMS out of the datetime stamp
-L2_cleaning$HMS <- format(L2_cleaning$datetime, format = "%H:%M:%S")
-
-L2_clean <- L2_cleaning 
+# check data types
+L2_clean <- L2_clean |>
+  mutate(
+    loggerID = as.factor(loggerID),
+    date = as.Date(datetime), 
+    HMS = format(datetime, format = "%H:%M:%S"))
 ```
 
 # Site x Microsite Means

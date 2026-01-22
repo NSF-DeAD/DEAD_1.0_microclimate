@@ -11,8 +11,6 @@ This code pulls together data from the raw csv files downloaded from the Kestrel
 
 This code ingests the raw Kestrel csv files that are in the "L0raw_data" folder for this project on Dropbox. This code pulls data from the Dropbox folder using a config.yml file that maps to the Dropbox folder ("\~/DeAD NSF MSB Dryland Decomposition/Field&LabCircle/DEAD1_0/logger_data"). Data are written the same way.
 
-
-
 ```{r}
 #| label: load needed packages
 library(stringr) # v. 1.2.0
@@ -74,7 +72,7 @@ read_fun = function(path) {
 
 # Line below is useful for testing if logger name is being assigned
 # change the number in brackets to check show the top section of each file
-read_fun(allfiles[81]) # use to test the function on an individual file
+#read_fun(allfiles[81]) # use to test the function on an individual file
 ```
 
 ## L1: Combine L0 Files
@@ -200,10 +198,13 @@ L2_cleaning <- L2_cleaning |>
 
 L2 <- L2_cleaning |>
   mutate(
+    loggerID = as.factor(loggerID),
+    date = as.Date(datetime), 
+    HMS = format(datetime, format = "%H:%M:%S"),
     startdate = as.character(startdate),  
     starttime = as.character(starttime),  
     enddate = as.character(enddate),  
-    endtime = as.character(endtime),  
+    endtime = as.character(endtime), 
     start_datetime = as.POSIXct(paste(startdate, starttime), 
                                 format = "%m/%d/%y %H:%M:%S", tz = "UTC"),
     end_datetime = as.POSIXct(paste(enddate, endtime), 
@@ -224,6 +225,7 @@ L2 <- L2 |>
 
 #save the L2 output as a .csv file into the Dropbox
 write.csv(L2, file = file.path(DEADloggers,  "DEAD_Kestrel_L2.csv"))
+
 ```
 
 ### Plots: Individual Loggers
@@ -334,6 +336,3 @@ RCEW_T_by_logger <- L2 |>
     facet_grid(loggerID ~ .)
 RCEW_T_by_logger
 ```
-
-
-
