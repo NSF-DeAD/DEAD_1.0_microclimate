@@ -7,7 +7,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-This code pulls together data from the raw csv files downloaded from the Kestrel Drop2 dataloggers used in the DEAD 1.0 project.
+This code pulls together data from the raw csv files downloaded from the Kestrel Drop2 dataloggers used in the DEAD 1.0 project. It creates a compiled L1 file with all data combined and a cleaned L2 file with duplicates and extraneous data removed.These files are written to the Dropbox folder for this project.
 
 This code ingests the raw Kestrel csv files that are in the "L0raw_data" folder for this project on Dropbox. This code pulls data from the Dropbox folder using a config.yml file that maps to the Dropbox folder ("\~/DeAD NSF MSB Dryland Decomposition/Field&LabCircle/DEAD1_0/logger_data"). Data are written the same way.
 
@@ -30,7 +30,7 @@ sessionInfo()
 ```
 
 ```{r}
-# Use the stored config file to define the path for the DERT Data & Metadata folder (in Dropbox) 
+# Use the stored config file to define the path for the DeAD Dropbox folder 
 DEADloggers <- config::get()
 ```
 
@@ -334,9 +334,6 @@ RCEW_T_by_logger <- L2 |>
     facet_grid(loggerID ~ .)
 RCEW_T_by_logger
 ```
-```{r}
-# pull out rows when loggerID is 2593668
-check <- L1_cleaning |>
-  filter(loggerID == 2605760)
-```
+
+
 
