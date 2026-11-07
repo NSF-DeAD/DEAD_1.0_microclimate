@@ -59,6 +59,15 @@ L2_clean <- L2_clean |>
     loggerID = as.factor(loggerID),
     date = as.Date(datetime), 
     HMS = format(datetime, format = "%H:%M:%S"))
+
+# Put datetime data into POSIXct
+L2_clean <- L2_clean |>
+  mutate(
+    datetime = if_else(nchar(datetime) == 10,
+                       paste(datetime, "00:00:00"),
+                       datetime),
+    datetime = ymd_hms(datetime, tz = "UTC")
+  )
 ```
 
 # Site x Microsite Means
@@ -79,7 +88,6 @@ KestrelL2_hourlymeans_df <- L2_clean |>
                se_RH   = sd_RH / sqrt(N)
                ) |>
   na.omit(KestrelL2_hourlymeans_df)
-
 
 ```
 
@@ -104,59 +112,198 @@ KestrelL2_dailymeans_df <- KestrelL2_hourlymeans_df |>
               daily_max_T = max(mean_T, na.rm=TRUE),
               daily_min_T = min(mean_T, na.rm=TRUE)
               )
+```
 
-# plots of daily means
-p2 <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=dailyRH, color = microsite, group = 1)) + 
-  geom_point() +
-  theme_bw() +
+## daily mean plots
+
+```{r}
+# create runs to group together consecutive days of data for plotting lines between points. Any gap of more than 3 days will start a new run.
+daily_runs <- KestrelL2_dailymeans_df |>
+  arrange(site, microsite, date) |>
+  group_by(site, microsite) |>
+  mutate(run = cumsum(c(TRUE, diff(date) > 3))) |>   # new run after any gap > 3 day
+  ungroup() |>
+  mutate(grp = interaction(site, microsite, run))
+```
+
+
+```{r}
+#| label: daily mean RH
+
+p2 <- ggplot(daily_runs, aes(x = date, y = dailyRH,
+                             color = microsite, group = grp)) +
+  geom_line() +
+  scale_color_manual(values = c(Open = "#A6611A", Shrub = "#018571")) +
   ylab("Daily Mean Relative Humidity (%)") +
   xlab("") +
-  scale_x_date(limits = as.Date(c("2021-03-01", "2022-11-01")))
-p2 + facet_grid(site ~ .)
-
-p2max <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=dailymaxRH, color = microsite, group = 1)) + 
-  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(c("2021-03-01", "2022-11-01"), tz = "UTC"),
+                 date_breaks = "1 month",
+                 date_labels = "%b %Y",
+                 expand = c(0, 0)) +
+  facet_grid(site ~ .) +
   theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  labs(color = NULL) +
+  theme(legend.position = "inside",
+      legend.position.inside = c(0.18, 0.99),
+      legend.justification = c(1, 1),
+      legend.background = element_blank())
+p2
+
+ggsave(file = file.path(DEADloggers, "figures", "daily_mean_RH.jpg"), 
+       plot = p2, width = 6, height = 8, units = "in", dpi = 300)
+
+```
+
+```{r}
+#| label: daily max RH
+
+p2max <- ggplot(daily_runs, aes(x = date, y = dailymaxRH,
+                             color = microsite, group = grp)) +
+  geom_line() +
+  scale_color_manual(values = c(Open = "#A6611A", Shrub = "#018571")) +
   ylab("Daily Maximum Relative Humidity (%)") +
   xlab("") +
-  scale_x_date(limits = as.Date(c("2021-03-01", "2022-11-01")))
-p2max + facet_grid(site ~ .)
-
-p2min <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=dailyminRH, color = microsite, group = 1)) + 
-  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(c("2021-03-01", "2022-11-01"), tz = "UTC"),
+                 date_breaks = "1 month",
+                 date_labels = "%b %Y",
+                 expand = c(0, 0)) +
+  facet_grid(site ~ .) +
   theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  labs(color = NULL) +
+  theme(legend.position = "inside",
+      legend.position.inside = c(0.15, 0.99),
+      legend.justification = c(1, 1),
+      legend.background = element_blank())
+p2max
+
+ggsave(file = file.path(DEADloggers, "figures", "daily_max_RH.jpg"), 
+       plot = p2max, width = 6, height = 8, units = "in", dpi = 300)
+
+```
+
+```{r}
+#| label: daily min RH
+
+p2min <- ggplot(daily_runs, aes(x = date, y = dailyminRH,
+                             color = microsite, group = grp)) +
+  geom_line() +
+  scale_color_manual(values = c(Open = "#A6611A", Shrub = "#018571")) +
   ylab("Daily Minimum Relative Humidity (%)") +
   xlab("") +
-  scale_x_date(limits = as.Date(c("2021-03-01", "2022-11-01")))
-p2min + facet_grid(site ~ .)
-
-p3 <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=dailyT, color = microsite, group = 1)) + 
-  geom_point() +
+  scale_x_datetime(limits = as.POSIXct(c("2021-03-01", "2022-11-01"), tz = "UTC"),
+                 date_breaks = "1 month",
+                 date_labels = "%b %Y",
+                 expand = c(0, 0)) +
+  facet_grid(site ~ .) +
   theme_bw() +
-  ylab("Daily Mean Temperature (C)") +
-  xlab("") +
-  scale_x_date(limits = as.Date(c("2021-03-01", "2022-11-01")))
-p3 + facet_grid(site ~ .) 
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  labs(color = NULL) +
+  theme(legend.position = "inside",
+      legend.position.inside = c(0.18, 0.99),
+      legend.justification = c(1, 1),
+      legend.background = element_blank())
+p2min
 
-p3max <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=daily_max_T, color = microsite, group = 1)) + 
-  geom_point() +
-  theme_bw() +
-  ylab("Daily Max Temperature (C)") +
-  xlab("") +
-  scale_x_date(limits = as.Date(c("2021-03-01", "2022-11-01")))
-p3max + facet_grid(site ~ .) 
+ggsave(file = file.path(DEADloggers, "figures", "daily_min_RH.jpg"), 
+       plot = p2min, width = 6, height = 8, units = "in", dpi = 300)
 
-p3min <- ggplot(KestrelL2_dailymeans_df, aes(x=date, y=daily_min_T, color = microsite, group = 1)) + 
-  geom_point() +
-  theme_bw() +
-  ylab("Daily Min Temperature (C)") +
+```
+
+```{r}
+#| label: daily mean T
+
+p3 <- ggplot(daily_runs, aes(x = date, y = dailyT,
+                             color = microsite, group = grp)) +
+  geom_line() +
+  scale_color_manual(values = c(Open = "#A6611A", Shrub = "#018571")) +
+  ylab(expression("Daily Mean Temperature ("*degree*C*")")) +
   xlab("") +
-  scale_x_date(limits = as.Date(c("2021-03-01", "2022-11-01")))
-p3min + facet_grid(site ~ .) 
+  scale_x_datetime(limits = as.POSIXct(c("2021-03-01", "2022-11-01"), tz = "UTC"),
+                 date_breaks = "1 month",
+                 date_labels = "%b %Y",
+                 expand = c(0, 0)) +
+  facet_grid(site ~ .) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  labs(color = NULL) +
+  theme(legend.position = "inside",
+      legend.position.inside = c(0.24, 0.94),
+      legend.justification = c(1, 1),
+      legend.background = element_blank())
+p3
+
+ggsave(file = file.path(DEADloggers, "figures", "daily_mean_T.jpg"), 
+       plot = p3, width = 6, height = 8, units = "in", dpi = 300)
+
+```
+
+```{r}
+#| label: daily max T
+
+p3max <- ggplot(daily_runs, aes(x = date, y = daily_max_T,
+                             color = microsite, group = grp)) +
+  geom_line() +
+  scale_color_manual(values = c(Open = "#A6611A", Shrub = "#018571")) +
+  ylab(expression("Daily Maximum Temperature ("*degree*C*")")) +
+  xlab("") +
+  scale_x_datetime(limits = as.POSIXct(c("2021-03-01", "2022-11-01"), tz = "UTC"),
+                 date_breaks = "1 month",
+                 date_labels = "%b %Y",
+                 expand = c(0, 0)) +
+  facet_grid(site ~ .) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  labs(color = NULL) +
+  theme(legend.position = "inside",
+      legend.position.inside = c(0.24, 0.94),
+      legend.justification = c(1, 1),
+      legend.background = element_blank())
+p3max
+
+ggsave(file = file.path(DEADloggers, "figures", "daily_max_T.jpg"), 
+       plot = p3max, width = 6, height = 8, units = "in", dpi = 300)
+
+```
+
+```{r}
+#| label: daily min T
+
+p3min <- ggplot(daily_runs, aes(x = date, y = daily_min_T,
+                             color = microsite, group = grp)) +
+  geom_line() +
+  scale_color_manual(values = c(Open = "#A6611A", Shrub = "#018571")) +
+  ylab(expression("Daily Minimum Temperature ("*degree*C*")")) +
+  xlab("") +
+  scale_x_datetime(limits = as.POSIXct(c("2021-03-01", "2022-11-01"), tz = "UTC"),
+                 date_breaks = "1 month",
+                 date_labels = "%b %Y",
+                 expand = c(0, 0)) +
+  facet_grid(site ~ .) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  labs(color = NULL) +
+  theme(legend.position = "inside",
+      legend.position.inside = c(0.24, 0.94),
+      legend.justification = c(1, 1),
+      legend.background = element_blank())
+p3min
+
+ggsave(file = file.path(DEADloggers, "figures", "daily_min_T.jpg"), 
+       plot = p3min, width = 6, height = 8, units = "in", dpi = 300)
 
 ```
 
 # Microsite Comparisons
+
+## hourly comparisons - T and RH
 
 ```{r}
 # read in the combined L2 dataset (all sites, all times, all microsites)
@@ -177,6 +324,14 @@ p <- ggplot(KestrelL2_hourlymeans_df, aes(x=datetime, y=mean_RH, color = microsi
   scale_x_datetime(date_breaks = "2 week", labels = date_format("%b %d"))
 p + facet_grid(site ~ .)
 
+
+```
+
+## microsite differences
+
+```{r}
+#| label: microsite-differences-calculations
+
 # convert from long to wide form to calculate differences between microsites at a given time
 microsite_diff_df <- KestrelL2_hourlymeans_df %>% 
   select(site, microsite, datetime, mean_T,mean_RH) %>%
@@ -185,35 +340,155 @@ microsite_diff_df <- KestrelL2_hourlymeans_df %>%
 
 microsite_diff_df$shrub.openT <- microsite_diff_df$mean_T_Shrub - microsite_diff_df$mean_T_Open  
 microsite_diff_df$shrub.openRH <- microsite_diff_df$mean_RH_Shrub - microsite_diff_df$mean_RH_Open 
+```
+
+```{r}
+#| label: microsite-differences-by-T
 
 # plot shrub minus open T by site
-p <- ggplot(microsite_diff_df, aes(x=datetime, y=shrub.openT, group = 1)) + geom_line() +
-  labs(title = "") +
-  xlab("Date") +
-  ylab("Shrub - Open Temperature (C)") +
-  scale_x_datetime(date_breaks = "2 week", labels = date_format("%b %d"))
-p + facet_grid(site ~ .)
+# add interpolated points where the line crosses zero (within each site) so that color plots differently above and below zero
+add_crossings_T <- function(d) {
+  d <- d %>% arrange(datetime)
+  x <- as.numeric(d$datetime)
+  y <- d$shrub.openT
+  i <- which(head(y, -1) * tail(y, -1) < 0)
+  if (length(i) == 0) return(d)
+  new <- d[i, ]
+  new$datetime <- as.POSIXct(x[i] - y[i] * (x[i + 1] - x[i]) / (y[i + 1] - y[i]),
+                             origin = "1970-01-01",
+                             tz = attr(d$datetime, "tzone"))
+  new$shrub.openT <- 0
+  bind_rows(d, new) |> arrange(datetime)
+}
+
+seg_df <- microsite_diff_df |>
+  group_by(site) |>
+  group_modify(~ add_crossings_T(.x)) |>
+  mutate(xend = lead(datetime),
+         yend = lead(shrub.openT),
+         sign = ifelse((shrub.openT + yend) < 0, "below", "above")) |>
+  filter(!is.na(xend), !is.na(yend)) |>
+  ungroup()
+
+p6 <- ggplot(seg_df, aes(x = datetime, y = shrub.openT,
+                        xend = xend, yend = yend, color = sign)) +
+  geom_segment() +
+  scale_color_manual(values = c(above = "#018571", below = "#A6611A"), guide = "none") +
+  labs(x = "Date", y = expression
+       ("Shrub Temperature - Open Temperature ("*degree*C*")")) +
+  scale_x_datetime(date_breaks = "1 month", date_labels = "%b %d") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  geom_hline(yintercept = 0, linewidth = 0.2) +
+  facet_grid(site ~ .) +
+  ggtitle("data are hourly means of multiple loggers")
+p6
+
+ggsave(file = file.path(DEADloggers, "figures", "T_micorsite_diff_by_time.jpg"), 
+       plot = p6, width = 10, height = 8, units = "in", dpi = 300)
+
+```
+
+```{r}
+#| label: microsite-differences-by-RH
 
 # plot shrub minus open RH by site
-p <- ggplot(microsite_diff_df, aes(x=datetime, y=shrub.openRH, group = 1)) + geom_line() +
+p <- ggplot(microsite_diff_df, aes(x=datetime, y=shrub.openRH, group = 1)) + 
+  geom_line() +
   labs(title = "") +
   xlab("Date") +
   ylab("Shrub RH (%) - Open RH (%)") +
   scale_x_datetime(date_breaks = "2 week", labels = date_format("%b %d"))
 p + facet_grid(site ~ .)
 
+# plot shrub minus open RH by site
+# add interpolated points where the line crosses zero (within each site) so that color plots differently above and below zero
+add_crossings_RH <- function(d) {
+  d <- d %>% arrange(datetime)
+  x <- as.numeric(d$datetime)
+  y <- d$shrub.openRH
+  i <- which(head(y, -1) * tail(y, -1) < 0)
+  if (length(i) == 0) return(d)
+  new <- d[i, ]
+  new$datetime <- as.POSIXct(x[i] - y[i] * (x[i + 1] - x[i]) / (y[i + 1] - y[i]),
+                             origin = "1970-01-01",
+                             tz = attr(d$datetime, "tzone"))
+  new$shrub.openRH <- 0
+  bind_rows(d, new) |> arrange(datetime)
+}
 
-# Scatter plots of climate space ------------------------------------------
+seg_df <- microsite_diff_df |>
+  group_by(site) |>
+  group_modify(~ add_crossings_RH(.x)) |>
+  mutate(xend = lead(datetime),
+         yend = lead(shrub.openRH),
+         sign = ifelse((shrub.openRH + yend) < 0, "below", "above")) |>
+  filter(!is.na(xend), !is.na(yend)) |>
+  ungroup()
 
-p <- ggplot(microsite_diff_df, aes(x=mean_T_Open, y=mean_T_Shrub)) + geom_point() +
+p7 <- ggplot(seg_df, aes(x = datetime, y = shrub.openRH,
+                        xend = xend, yend = yend, color = sign)) +
+  geom_segment() +
+  scale_color_manual(values = c(above = "#018571", below = "#A6611A"), guide = "none") +
+  labs(x = "Date", y = "Shrub RH (%) - Open RH (%)") +
+  scale_x_datetime(date_breaks = "1 month", date_labels = "%b %d") +
+  scale_y_continuous(breaks = c(-60, -30, 0, 30, 60), expand = FALSE) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  geom_hline(yintercept = 0, linewidth = 0.2) +
+  facet_grid(site ~ .) +
+  ggtitle("data are hourly means of multiple loggers")
+p7
+
+ggsave(file = file.path(DEADloggers, "figures", "RH_micorsite_diff_by_time.jpg"), 
+       plot = p7, width = 10, height = 8, units = "in", dpi = 300)
+
+```
+
+## climate space scatterplots
+
+```{r}
+#| label: climate-space-RH
+
+p8 <- ggplot(microsite_diff_df, aes(x=mean_T_Open, y=mean_T_Shrub)) + geom_point() +
   labs(title = "") +
-  xlab("Open Temperature (C)") +
-  ylab("Shrub Temperature (C)") 
-p + facet_grid(site ~ .) + geom_abline(aes(slope = 1, intercept=0), color = "blue")
+  xlab(expression("Open Temperature ("*degree*C*")")) +
+  ylab(expression("Shrub Temperature ("*degree*C*")")) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  facet_grid(site ~ .) + 
+  geom_abline(aes(slope = 1, intercept=0), color = "blue") +
+  coord_cartesian(xlim = c(-20, 75), ylim = c(-20, 75)) +
+  theme(aspect.ratio = 1) +
+  ggtitle("data are hourly means of multiple loggers")
+p8
 
-p1 <- ggplot(microsite_diff_df, aes(x=mean_RH_Open, y=mean_RH_Shrub)) + geom_point() +
+ggsave(file = file.path(DEADloggers, "figures", "T_shrub_vs_open.jpg"), 
+       plot = p8, width = 6, height = 8, units = "in", dpi = 300)
+```
+
+```{r}
+#| label: climate-space-T
+
+p9 <- ggplot(microsite_diff_df, aes(x=mean_RH_Open, y=mean_RH_Shrub)) + geom_point() +
   labs(title = "") +
   xlab("Open RH (%)") +
-  ylab("Shrub RH (%)") 
-p1 + facet_grid(site ~ .) + geom_abline(aes(slope = 1, intercept=0), color = "blue")
+  ylab("Shrub RH (%)") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  facet_grid(site ~ .) + 
+  geom_abline(aes(slope = 1, intercept=0), color = "blue") +
+  coord_cartesian(xlim = c(0, 100), ylim = c(0, 100)) +
+  theme(aspect.ratio = 1) +
+  ggtitle("data are hourly means of multiple loggers")
+
+p9
+
+ggsave(file = file.path(DEADloggers, "figures", "RH_shrub_vs_open.jpg"), 
+       plot = p9, width = 6, height = 8, units = "in", dpi = 300)
+
 ```
